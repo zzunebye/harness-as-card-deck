@@ -208,6 +208,7 @@ pre.code code { font: 12.5px var(--mono); }
 .skills-compact { display: none; }
 .skills-compact summary { cursor: pointer; color: var(--gold); font: 500 13px var(--mono); text-align: center; }
 .skills-compact[open] summary { margin-bottom: 12px; }
+.skills-wide h3 { margin: 0; font: 500 13px var(--mono); color: var(--gold); }
 .skills-footer p { margin: 0; line-height: 1.6; }
 .skills-footer b { color: var(--panel-ink); }
 .skills-footer code { font: 500 12px var(--mono); }

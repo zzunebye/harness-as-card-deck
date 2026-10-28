@@ -37,6 +37,7 @@ export function SkillsFooter({ compact = false }: { compact?: boolean }) {
   }
   return (
     <section className="skills-footer skills-wide">
+      <h3>What is a skill?</h3>
       <Body />
     </section>
   );
