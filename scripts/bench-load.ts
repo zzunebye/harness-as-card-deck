@@ -1,11 +1,10 @@
-// Cold-cache first-load benchmark: node scripts/bench-load.ts <urlA> <urlB> [runs=5] [--out runs.json]
+// Cold-cache first-load benchmark: node scripts/bench-load.ts <urlA> <urlB> [runs=5] [--out runs.json] [--ready <css selector>]
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const READY_SELECTOR = ".lobby-deck";
 const READY_TIMEOUT_MS = 90_000;
 // LCP keeps emitting candidates after first render (late fonts, layout), so let it settle before reading.
 const LCP_SETTLE_MS = 2_000;
@@ -18,8 +17,8 @@ const VIEWPORT = { width: 412, height: 823, deviceScaleFactor: 1.75, mobile: tru
 interface Run {
   side: "A" | "B";
   url: string;
-  lobbyReadyMs: number;
-  lobbyIdleMs: number;
+  readyMs: number;
+  idleMs: number;
   lcpMs: number | null;
   jsBytesBeforeReady: number;
   jsBytesTotal: number;
@@ -32,8 +31,11 @@ interface Run {
 const args = process.argv.slice(2);
 const outIdx = args.indexOf("--out");
 const outFile = outIdx >= 0 ? args.splice(outIdx, 2)[1] : null;
+const readyIdx = args.indexOf("--ready");
+// The Lobby's deck buttons by default. A deep link passes the selector for the content it should open on.
+const READY_SELECTOR = readyIdx >= 0 ? args.splice(readyIdx, 2)[1] : ".lobby-deck";
 const [urlA, urlB, runsArg] = args;
-if (!urlA || !urlB) throw new Error("usage: node scripts/bench-load.ts <urlA> <urlB> [runs=5] [--out runs.json]");
+if (!urlA || !urlB) throw new Error("usage: node scripts/bench-load.ts <urlA> <urlB> [runs=5] [--out runs.json] [--ready <css selector>]");
 if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}. Set CHROME to a Chrome or Chromium binary.`);
 const runs = Number(runsArg ?? 5);
 
@@ -196,8 +198,8 @@ async function measure(side: "A" | "B", url: string): Promise<Run> {
     return {
       side,
       url,
-      lobbyReadyMs: Math.round(bench.ready!),
-      lobbyIdleMs: Math.round(bench.idle!),
+      readyMs: Math.round(bench.ready!),
+      idleMs: Math.round(bench.idle!),
       lcpMs: result.value === null ? null : Math.round(result.value),
       jsBytesBeforeReady: scripts.filter((x) => x.finishedMs <= bench!.ready!).reduce((a, x) => a + x.encoded, 0),
       jsBytesTotal: scripts.reduce((a, x) => a + x.encoded, 0),
@@ -210,11 +212,11 @@ async function measure(side: "A" | "B", url: string): Promise<Run> {
     cdp.close();
     proc.kill("SIGKILL");
     await new Promise((r) => proc.once("exit", r));
-    rmSync(profile, { recursive: true, force: true });
+    rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 }
 
-const METRICS = ["lobbyReadyMs", "lobbyIdleMs", "lcpMs", "jsBytesBeforeReady", "jsBytesTotal", "bytesTotal"] as const;
+const METRICS = ["readyMs", "idleMs", "lcpMs", "jsBytesBeforeReady", "jsBytesTotal", "bytesTotal"] as const;
 
 type Stat = { median: number; min: number; max: number; n: number };
 
@@ -231,18 +233,19 @@ for (let i = 0; i < runs; i++) {
   for (const [side, url] of [["A", urlA], ["B", urlB]] as const) {
     const r = await measure(side, url);
     results.push(r);
-    console.error(`run ${i + 1}/${runs} ${side}: ready ${r.lobbyReadyMs} ms, idle ${r.lobbyIdleMs} ms, LCP ${r.lcpMs} ms, JS before ready ${r.jsBytesBeforeReady} B, failed ${r.failedRequests.length}, console errors ${r.consoleErrors.length}`);
+    console.error(`run ${i + 1}/${runs} ${side}: ready ${r.readyMs} ms, idle ${r.idleMs} ms, LCP ${r.lcpMs} ms, JS before ready ${r.jsBytesBeforeReady} B, failed ${r.failedRequests.length}, console errors ${r.consoleErrors.length}`);
   }
 }
 
 const summary = {
-  conditions: { network: NETWORK, cpuRate: CPU_RATE, viewport: VIEWPORT, runs },
+  conditions: { network: NETWORK, cpuRate: CPU_RATE, viewport: VIEWPORT, runs, readySelector: READY_SELECTOR },
   A: { url: urlA, ...summarize(results.filter((r) => r.side === "A")) },
   B: { url: urlB, ...summarize(results.filter((r) => r.side === "B")) },
   failedRequests: results.flatMap((r) => r.failedRequests.map((f) => `${r.side}: ${f}`)),
   consoleErrors: results.flatMap((r) => r.consoleErrors.map((e) => `${r.side}: ${e}`)),
 };
 const fmt = (s: Stat) => `${s.median} (${s.min}..${s.max}, n=${s.n})`;
+console.log(`ready = ${READY_SELECTOR} in the DOM, idle = first task after that`);
 console.log(`metric               A: median (range, n)              B: median (range, n)`);
 for (const m of METRICS) console.log(`${m.padEnd(20)} ${fmt(summary.A[m]).padEnd(33)} ${fmt(summary.B[m])}`);
 console.log(`failed requests: ${summary.failedRequests.length}${summary.failedRequests.map((f) => `\n  ${f}`).join("")}`);
