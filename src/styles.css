@@ -198,8 +198,8 @@ pre.code code { font: 12.5px var(--mono); }
 @media (max-width: 640px) {
   .panel { width: 100%; }
   .topbar { padding: 8px 16px; }
-  .topbar h1 .title { display: none; }
-  .topbar h1 span { margin-right: 0; }
+  .topbar h1 { font-size: clamp(16px, 4.6vw, 20px); }
+  .topbar h1 span { font-size: 0.8em; margin-right: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .world, .panel, .stage.open .panel { transition: none; }
