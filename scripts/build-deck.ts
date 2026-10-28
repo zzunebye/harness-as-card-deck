@@ -205,3 +205,13 @@ const built = SOURCES.map(buildDeck);
 writeFileSync(join(ROOT, "src/data/decks.json"), JSON.stringify(built.map((b) => b.deck)));
 mkdirSync(join(ROOT, "src/data/bodies"), { recursive: true });
 for (const { deck, bodies } of built) writeFileSync(join(ROOT, "src/data/bodies", `${deck.meta.id}.json`), JSON.stringify(bodies));
+
+// Star count is baked in at build time so the client makes no GitHub API call. A failed fetch keeps the previous value.
+const REPO = "zzunebye/harness-as-card-deck";
+const repoFile = join(ROOT, "src/data/repo.json");
+let stars: number = existsSync(repoFile) ? JSON.parse(readFileSync(repoFile, "utf8")).stars : 0;
+try {
+  const res = await fetch(`https://api.github.com/repos/${REPO}`, { signal: AbortSignal.timeout(5000) });
+  if (res.ok) stars = (await res.json()).stargazers_count;
+} catch {}
+writeFileSync(repoFile, JSON.stringify({ stars }));

@@ -209,6 +209,10 @@ pre.code code { font: 12.5px var(--mono); }
   .card-hover.glow .tilt::after, .card-hover.focused .tilt::after { animation: none; }
 }
 
+.gh-link { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font: 500 12px var(--mono); border: 1px solid #2a3a33; border-radius: 99px; padding: 6px 12px; transition: color 0.15s, border-color 0.15s; }
+.gh-link:hover, .gh-link:focus-visible { color: var(--cream); border-color: var(--gold); }
+.gh-stars { font-weight: 600; color: var(--gold); }
+@media (max-width: 640px) { .gh-link span, .gh-stars { display: none; } .gh-link { padding: 6px; } }
 .topbar h1 .home { border: 0; background: transparent; padding: 0; font: inherit; }
 .lobby { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 24px 0; background: radial-gradient(ellipse at 40% 45%, var(--felt-1) 0%, var(--felt-2) 75%); }
 .lobby > :first-child { margin-top: auto; }
