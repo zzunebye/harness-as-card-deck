@@ -50,6 +50,8 @@ export interface Deck {
   /** Ordered workflow stages; only decks without meaningful layers set this. */
   stages?: Stage[];
   meta: { id: string; label: string; repo: string; subdir: string; sha: string; version: string; license: string };
+  /** Markdown introducing the harness itself, from `data/about/<id>.md`. */
+  about: string;
   cards: Card[];
   edges: Edge[];
 }

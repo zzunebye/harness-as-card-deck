@@ -194,6 +194,7 @@ function buildDeck(src: Source): Deck {
   return {
     ...(stages && { stages }),
     meta: { id: src.id, label: src.label, repo: src.repo, subdir: src.subdir, sha, version: collected.version, license: src.license },
+    about: readFileSync(join(ROOT, "data/about", `${src.id}.md`), "utf8").trim(),
     cards,
     edges: [...edges.values()],
   };

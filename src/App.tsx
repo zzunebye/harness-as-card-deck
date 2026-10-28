@@ -194,7 +194,7 @@ export function App() {
             <Table key={source} deck={deck} launch={launch} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} />
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label="Resize panel" onPointerDown={startResize} />
-          <Panel deck={deck} card={selected ? cards.get(selected)! : null} onClose={dismiss} />
+          <Panel deck={deck} phase={phase} card={selected ? cards.get(selected)! : null} onClose={dismiss} />
         </main>
         )}
       </div>

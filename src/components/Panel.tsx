@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { LAYER_INFO, type Card, type Deck } from "../types.ts";
+import { LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
 import { createResolver } from "../lib/refs.ts";
 import { remarkRefs } from "../lib/markdown.ts";
 import { useInteraction } from "../context.ts";
+import type { Phase } from "./Table.tsx";
 
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
   const [html, setHtml] = useState<string | null>(null);
@@ -45,14 +46,14 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
   );
 }
 
-export function Panel({ deck, card, onClose }: { deck: Deck; card: Card | null; onClose(): void }) {
+export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase; card: Card | null; onClose(): void }) {
   const resolver = useMemo(() => createResolver(deck.cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })), deck.meta.id), [deck]);
   const scroller = useRef<HTMLDivElement>(null);
   const { hovered } = useInteraction();
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
-  }, [card?.id]);
+  }, [card?.id, deck.meta.id]);
 
   useEffect(() => {
     if (!hovered || !card) return;
@@ -87,6 +88,20 @@ export function Panel({ deck, card, onClose }: { deck: Deck; card: Card | null; 
 
   const remarkPlugins = useMemo(() => (card ? [remarkGfm, remarkRefs(resolver, card.id)] : [remarkGfm]), [resolver, card]);
 
+  if (!card && phase !== "dealt") {
+    return (
+      <aside className="panel intro" ref={scroller}>
+        <h2>{deck.meta.label}</h2>
+        <article className="md about">
+          <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+            {deck.about}
+          </ReactMarkdown>
+        </article>
+        <Attribution deck={deck} />
+      </aside>
+    );
+  }
+
   if (!card) {
     return (
       <aside className="panel intro" ref={scroller}>
@@ -96,7 +111,7 @@ export function Panel({ deck, card, onClose }: { deck: Deck; card: Card | null; 
           References in the text become chips: hover to find the card, click to jump to it.
         </p>
         <dl className="legend">
-          {Object.values(LAYER_INFO).map((l) => (
+          {LAYER_ORDER.filter((l) => deck.cards.some((c) => c.layer === l)).map((l) => LAYER_INFO[l]).map((l) => (
             <div key={l.label}>
               <dt>{l.suit}</dt>
               <dd>{l.label}</dd>
