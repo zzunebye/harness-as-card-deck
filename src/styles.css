@@ -190,7 +190,9 @@ pre.code code { font: 12.5px var(--mono); }
 }
 
 .topbar h1 .home { border: 0; background: transparent; padding: 0; font: inherit; }
-.lobby { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; padding: 24px 0; background: radial-gradient(ellipse at 40% 45%, var(--felt-1) 0%, var(--felt-2) 75%); }
+.lobby { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 24px 0; background: radial-gradient(ellipse at 40% 45%, var(--felt-1) 0%, var(--felt-2) 75%); }
+.lobby > :first-child { margin-top: auto; }
+.lobby > :last-child { margin-bottom: auto; }
 .lobby h2 { margin: 0; font: 600 28px var(--display); color: var(--gold); }
 .lobby ul { list-style: none; margin: 0; padding: 0 24px; display: flex; flex-wrap: wrap; justify-content: center; gap: 56px; }
 .lobby-deck { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 0; background: transparent; padding: 12px; border-radius: 16px; }
