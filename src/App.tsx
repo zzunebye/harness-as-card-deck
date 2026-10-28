@@ -3,7 +3,8 @@ import decksJson from "./data/decks.json";
 import repo from "./data/repo.json";
 import { EDGE_INFO, edgeDefinition, type Deck, type EdgeType } from "./types.ts";
 import { lensesFor, type Launch, type Lens } from "./lib/layout.ts";
-import { parseUrlState, serializeUrlState } from "./lib/urlState.ts";
+import { Analytics, type BeforeSend } from "@vercel/analytics/react";
+import { analyticsPage, parseUrlState, serializeUrlState } from "./lib/urlState.ts";
 import { loadBodies } from "./lib/bodies.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
@@ -55,6 +56,13 @@ const withCampaign = (search: string) => {
   const params = new URLSearchParams(search);
   for (const [k, v] of campaign) params.set(k, v);
   return `?${params}`;
+};
+
+// The script drops the query once a custom path differs from location.pathname, so the campaign tags are put back here.
+const keepCampaign: BeforeSend = (event) => {
+  const url = new URL(event.url);
+  url.search = withCampaign("");
+  return { ...event, url: url.href };
 };
 
 export function App() {
@@ -213,9 +221,12 @@ export function App() {
   }, []);
 
   const ctx = useMemo(() => ({ hovered, setHovered, select }), [hovered, select]);
+  const page = analyticsPage({ source, card: selected });
 
   return (
     <InteractionContext.Provider value={ctx}>
+      {/* The outgoing deck drops its card before it slides away, and that in-between view is not one the visitor chose. */}
+      <Analytics route={leaving ? undefined : page.route} path={page.path} beforeSend={keepCampaign} />
       <div className="app">
         <header className="topbar">
           <h1>
