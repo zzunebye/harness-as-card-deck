@@ -30,12 +30,13 @@ interface EdgePath {
   arrows: { x: number; y: number; angle: number }[];
 }
 
-const Edges = memo(function Edges({ edges }: { edges: EdgePath[] }) {
+const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: boolean }) {
   const still = useReducedMotion();
+  const [wait, span, arrow] = fast ? [0.1, 0.3, 0.3] : [0.35, 0.5, 0.6];
   return (
     <svg className="edges" width={WORLD_W} height={WORLD_H}>
       {edges.map((e, i) => {
-        const draw = { initial: { pathLength: 0, opacity: 0 }, animate: { pathLength: 1, opacity: 1 }, transition: still ? { duration: 0 } : { delay: 0.35 + i * 0.012, duration: 0.5 } };
+        const draw = { initial: { pathLength: 0, opacity: 0 }, animate: { pathLength: 1, opacity: 1 }, transition: still ? { duration: 0 } : { delay: wait + i * 0.012, duration: span } };
         return (
           <g key={e.key}>
             <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={9} strokeLinecap="round" strokeOpacity={0.18} {...draw} />
@@ -48,7 +49,7 @@ const Edges = memo(function Edges({ edges }: { edges: EdgePath[] }) {
                 transform={`translate(${a.x},${a.y}) rotate(${a.angle})`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={still ? { duration: 0 } : { delay: 0.6 + i * 0.012 }}
+                transition={still ? { duration: 0 } : { delay: arrow + i * 0.012 }}
               />
             ))}
           </g>
@@ -77,11 +78,13 @@ interface Props {
   onBackground(): void;
   /** Right-hand px covered by the overlay panel; the world fits into the rest. */
   inset: number;
+  /** Phone: picks and edge draws run on a quicker spring so they finish before the panel covers the board. */
+  fast: boolean;
 }
 
 const NO_FIT: Fit = { scale: 1, x: 0, y: 0 };
 
-export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leaving, enter, onDeal, onBackground, inset }: Props) {
+export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leaving, enter, onDeal, onBackground, inset, fast }: Props) {
   const { hovered } = useInteraction();
   const wrap = useRef<HTMLDivElement>(null);
   const still = useReducedMotion();
@@ -268,7 +271,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
             </div>
           ))}
 
-        <Edges edges={leaving ? [] : edges} />
+        <Edges edges={leaving ? [] : edges} fast={fast && phase === "dealt"} />
 
         {deck.cards.map((card, i) => (
           <CardView
@@ -277,6 +280,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
             pose={poses.get(card.id)!}
             from={starts?.get(card.id)}
             delay={leaving ? 0 : phase === "dealt" && !selected ? i * 0.008 : phase === "dealt" ? 0.02 + (focus?.related.has(card.id) ? i * 0.004 : 0) : 0}
+            fast={fast && phase === "dealt"}
             focused={card.id === selected}
             glow={hovered === card.id}
             tabbable={card.id === tabId}

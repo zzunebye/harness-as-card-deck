@@ -28,6 +28,8 @@ function savePanelW(w: number) {
 
 const OVERLAY_MAX = 1100;
 const PHONE_MAX = 640;
+// How long a phone waits after a card pick before the panel slides over the board: the fast spring and edge draw below have mostly landed by then.
+const PANEL_DELAY_MS = 450;
 const SLIDE_MS = 450;
 
 function useViewportWidth() {
@@ -70,14 +72,33 @@ export function App() {
   // Keep the board visible beside the drawer, except on phones where the drawer covers it.
   const inset = overlay && selected && panelOpen && vw > PHONE_MAX ? Math.min(panelW, vw * 0.55) : 0;
 
+  const showing = useRef(false);
+  showing.current = !!selected && panelOpen;
+  const panelTimer = useRef<number>(0);
+
   const select = useCallback((id: string) => {
     setHovered(null);
-    setPanelOpen(true);
+    clearTimeout(panelTimer.current);
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // On phones the panel covers the board, so a first pick lets the cards and edges start moving before it slides over them.
+    if (window.innerWidth <= PHONE_MAX && !showing.current && !calm) {
+      setPanelOpen(false);
+      panelTimer.current = window.setTimeout(() => setPanelOpen(true), PANEL_DELAY_MS);
+    } else {
+      setPanelOpen(true);
+    }
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
-  const clear = useCallback(() => setTrail([]), []);
+  const clear = useCallback(() => {
+    clearTimeout(panelTimer.current);
+    setTrail([]);
+  }, []);
   // In drawer mode the first dismiss only hides the panel so the selected card's relations stay on the board.
-  const dismiss = useCallback(() => (overlay && selected && panelOpen ? setPanelOpen(false) : clear()), [overlay, selected, panelOpen, clear]);
+  const dismiss = useCallback(() => {
+    clearTimeout(panelTimer.current);
+    if (overlay && selected && panelOpen) setPanelOpen(false);
+    else clear();
+  }, [overlay, selected, panelOpen, clear]);
 
   // Fetch the deck's card text while the stack and shuffle play, so it is there by the time a card can be opened.
   useEffect(() => {
@@ -227,7 +248,7 @@ export function App() {
         <main className={`stage${overlay ? " overlay" : ""}${selected && panelOpen ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
-            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} />
+            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label="Resize panel" onPointerDown={startResize} />
           <Panel deck={deck} phase={phase} card={selected ? cards.get(selected)! : null} onClose={dismiss} />
