@@ -48,6 +48,15 @@ const skipsIntro = (search: string, state: ReturnType<typeof parseUrlState>) => 
 
 const initial = parseUrlState(location.search, decks);
 
+// Campaign tags from the landing URL ride along on every URL rewrite, so analytics still sees where the visit came from.
+const campaign = [...new URLSearchParams(location.search)].filter(([k]) => k.startsWith("utm_"));
+const withCampaign = (search: string) => {
+  if (campaign.length === 0) return search;
+  const params = new URLSearchParams(search);
+  for (const [k, v] of campaign) params.set(k, v);
+  return `?${params}`;
+};
+
 export function App() {
   const [phase, setPhase] = useState<Phase>(skipsIntro(location.search, initial) ? "dealt" : "stack");
   const [lens, setLens] = useState<Lens>(initial?.lens ?? lensesFor(decks[0])[0].id);
@@ -152,7 +161,7 @@ export function App() {
   useEffect(() => {
     const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
     const id = deck?.meta.id ?? null;
-    const url = location.pathname + search;
+    const url = location.pathname + withCampaign(search);
     if (id !== urlSource.current) {
       urlSource.current = id;
       history.pushState(null, "", url);
