@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseUrlState, serializeUrlState } from "../src/lib/urlState.ts";
+import { analyticsPage, parseUrlState, serializeUrlState } from "../src/lib/urlState.ts";
 import type { Deck } from "../src/types.ts";
 
 const deck = (id: string, cards: string[], stages?: unknown) => ({ meta: { id }, cards: cards.map((c) => ({ id: c })), stages }) as unknown as Deck;
@@ -36,4 +36,16 @@ test("params equal to defaults are omitted", () => {
 
 test("a null default source always writes the source", () => {
   assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null }, { source: null, lens: "layer" }), "?source=pstack");
+});
+
+test("the lobby is one analytics page", () => {
+  assert.deepEqual(analyticsPage({ source: null, card: null }), { route: "/", path: "/" });
+});
+
+test("an open deck is an analytics page under its id", () => {
+  assert.deepEqual(analyticsPage({ source: "gstack", card: null }), { route: "/[deck]", path: "/gstack" });
+});
+
+test("a selected card is an analytics page under its deck, with the id's colon made a hyphen", () => {
+  assert.deepEqual(analyticsPage({ source: "pstack", card: "principle:prove-it-works" }), { route: "/[deck]/[card]", path: "/pstack/principle-prove-it-works" });
 });
