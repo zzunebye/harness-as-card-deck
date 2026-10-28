@@ -242,6 +242,7 @@ pre.code code { font: 12.5px var(--mono); }
 
 @media (max-width: 1100px) {
   .lobby { gap: 24px; }
+  .lobby ul { margin-bottom: auto; }
   .skills-wide { display: none; }
   .skills-compact { display: flex; }
 }
