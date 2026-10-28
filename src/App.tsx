@@ -11,6 +11,7 @@ import { Table, type Phase } from "./components/Table.tsx";
 import { Panel } from "./components/Panel.tsx";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
 import { Lobby } from "./components/Lobby.tsx";
+import { Search } from "./components/Search.tsx";
 
 const decks = decksJson as Deck[];
 
@@ -165,6 +166,14 @@ export function App() {
 
   useEffect(() => () => (clearTimeout(dealTimer.current), clearTimeout(swapTimer.current)), []);
 
+  const searchPick = useCallback(
+    (id: string) => {
+      if (phase === "stack") deal();
+      select(id);
+    },
+    [phase, deal, select],
+  );
+
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
   useEffect(() => {
     const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
@@ -198,7 +207,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !(e.target instanceof HTMLInputElement) && dismiss();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [dismiss]);
@@ -232,7 +241,7 @@ export function App() {
       {/* The outgoing deck drops its card before it slides away, and that in-between view is not one the visitor chose. */}
       <Analytics route={leaving ? undefined : page.route} path={page.path} beforeSend={keepCampaign} />
       <div className="app">
-        <header className="topbar">
+        <header className={`topbar${deck ? " with-deck" : ""}`}>
           <h1>
             <button className="home" onClick={() => switchSource(null)} aria-label="All decks">
               <span>♠♥♦♣</span><b className="title">Harness as Deck</b>
@@ -254,6 +263,7 @@ export function App() {
               ))}
             </div>
           )}
+          {deck && !leaving && <Search key={deck.meta.id} deck={deck} onPick={searchPick} />}
           <a className="gh-link" href="https://github.com/zzunebye/harness-as-card-deck" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">
             <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
               <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
