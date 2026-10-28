@@ -186,12 +186,20 @@ pre.code code { font: 12.5px var(--mono); }
   }
   .stage.open .panel { transform: none; visibility: visible; transition: transform 0.25s ease; }
 }
+.topbar h1 .title { font-weight: inherit; }
+.source-select { display: none; appearance: none; height: 36px; padding: 0 32px 0 14px; border: 1px solid #2a3a33; border-radius: 10px; background: #121a16 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f2c14e' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 12px center; color: var(--gold); font: 600 13px var(--sans); }
+.source-select:focus-visible { outline: 2px solid var(--gold); }
 @media (max-width: 900px) {
-  .topbar { height: auto; min-height: 60px; flex-wrap: wrap; padding: 8px 20px; gap: 12px 24px; }
+  .topbar { height: auto; min-height: 60px; flex-wrap: wrap; padding: 8px 20px; gap: 8px 16px; }
   .edge-legend { display: none; }
+  .source-tabs { display: none; }
+  .source-select { display: block; }
 }
 @media (max-width: 640px) {
   .panel { width: 100%; }
+  .topbar { padding: 8px 16px; }
+  .topbar h1 .title { display: none; }
+  .topbar h1 span { margin-right: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .world, .panel, .stage.open .panel { transition: none; }
