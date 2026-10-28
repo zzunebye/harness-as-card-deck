@@ -150,6 +150,16 @@ const SOURCES: Source[] = [
       return { cards, version: read("../anthropic.sha").trim().slice(0, 7) };
     },
   },
+  {
+    id: "compound",
+    label: "compound engineering",
+    repo: "EveryInc/compound-engineering-plugin",
+    subdir: "",
+    license: "MIT",
+    collect(read, dir) {
+      return { cards: skillCards(dir, read), version: JSON.parse(read("plugin.json")).version };
+    },
+  },
 ];
 
 function buildDeck(src: Source): { deck: Deck; bodies: Bodies } {

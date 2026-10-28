@@ -211,5 +211,91 @@
         ]
       }
     ]
+  },
+  "compound": {
+    "layer": {},
+    "removeEdges": [],
+    "addEdges": [],
+    "stages": [
+      {
+        "id": "think",
+        "label": "Think",
+        "cards": [
+          "skill:ce-ideate",
+          "skill:ce-brainstorm",
+          "skill:ce-strategy",
+          "skill:ce-pov",
+          "skill:ce-explain"
+        ]
+      },
+      {
+        "id": "plan",
+        "label": "Plan",
+        "cards": [
+          "skill:ce-plan",
+          "skill:ce-doc-review",
+          "skill:ce-prototype",
+          "skill:ce-bakeoff"
+        ]
+      },
+      {
+        "id": "build",
+        "label": "Build",
+        "cards": [
+          "skill:ce-work",
+          "skill:ce-worktree",
+          "skill:ce-debug",
+          "skill:ce-optimize",
+          "skill:ce-simplify-code"
+        ]
+      },
+      {
+        "id": "review",
+        "label": "Review",
+        "cards": [
+          "skill:ce-code-review",
+          "skill:ce-test-browser",
+          "skill:ce-test-xcode",
+          "skill:ce-dogfood",
+          "skill:ce-polish"
+        ]
+      },
+      {
+        "id": "ship",
+        "label": "Ship",
+        "cards": [
+          "skill:ce-commit",
+          "skill:ce-commit-push-pr",
+          "skill:ce-babysit-pr",
+          "skill:ce-resolve-pr-feedback",
+          "skill:ce-promote"
+        ]
+      },
+      {
+        "id": "compound",
+        "label": "Compound",
+        "cards": [
+          "skill:ce-compound",
+          "skill:ce-compound-refresh",
+          "skill:ce-product-pulse",
+          "skill:ce-sweep",
+          "skill:ce-riffrec-feedback-analysis"
+        ]
+      },
+      {
+        "id": "meta",
+        "label": "Meta",
+        "cards": [
+          "skill:lfg",
+          "skill:ce-handoff",
+          "skill:ce-setup",
+          "skill:ce-proof",
+          "skill:ce-retune",
+          "skill:ce-noslop",
+          "skill:wtf"
+        ],
+        "utility": true
+      }
+    ]
   }
 }
