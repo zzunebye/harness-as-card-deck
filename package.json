@@ -6,8 +6,9 @@
   "scripts": {
     "fetch": "sh scripts/fetch-pstack.sh && sh scripts/fetch-gstack.sh",
     "deck": "node scripts/build-deck.ts",
+    "check": "tsc --noEmit && node --test scripts/edges.test.ts",
     "dev": "npm run deck && vite",
-    "build": "npm run deck && tsc --noEmit && vite build",
+    "build": "npm run deck && npm run check && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

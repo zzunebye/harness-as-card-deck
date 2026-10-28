@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { createResolver } from "../src/lib/refs.ts";
 import { extractRefs } from "../src/lib/markdown.ts";
-import type { Card, Deck, Edge, EdgeType, Layer } from "../src/types.ts";
+import { assertEdgeTypes, edgeFromAdd, makeEdge } from "../src/lib/edges.ts";
+import { LAYER_ORDER, type Card, type Deck, type Edge, type Layer } from "../src/types.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const allOverrides = JSON.parse(readFileSync(join(ROOT, "data/overrides.json"), "utf8"));
@@ -109,9 +110,6 @@ const SOURCES: Source[] = [
   },
 ];
 
-const edgeType = (to: Card): EdgeType =>
-  to.layer === "agent" ? "delegates-to-agent" : to.layer === "principle" ? "cites-principle" : "routes-to";
-
 function buildDeck(src: Source): Deck {
   const dir = join(ROOT, "vendor", src.id);
   const sha = readFileSync(join(ROOT, "vendor", `${src.id}.sha`), "utf8").trim();
@@ -131,11 +129,15 @@ function buildDeck(src: Source): Deck {
       const key = `${c.id}>${target}`;
       const e = edges.get(key);
       if (e) e.weight++;
-      else edges.set(key, { from: c.id, to: target, type: edgeType(to), weight: 1 });
+      else edges.set(key, makeEdge(c.id, to, 1));
     }
   }
   for (const r of overrides.removeEdges) edges.delete(`${r.from}>${r.to}`);
-  for (const a of overrides.addEdges) edges.set(`${a.from}>${a.to}`, { ...a, weight: 1 });
+  for (const a of overrides.addEdges) {
+    const edge = edgeFromAdd(a, byId.get(a.to));
+    edges.set(`${edge.from}>${edge.to}`, edge);
+  }
+  assertEdgeTypes(cards, [...edges.values()]);
 
   for (const e of edges.values()) {
     byId.get(e.from)!.out++;
@@ -143,7 +145,7 @@ function buildDeck(src: Source): Deck {
   }
 
   const count = (l: Layer) => cards.filter((c) => c.layer === l).length;
-  console.log(`${src.id}: ${cards.length} cards (${(["router", "playbook", "skill", "principle", "agent"] as Layer[]).map((l) => `${l} ${count(l)}`).join(", ")}), ${edges.size} edges`);
+  console.log(`${src.id}: ${cards.length} cards (${LAYER_ORDER.map((l) => `${l} ${count(l)}`).join(", ")}), ${edges.size} edges`);
   const lonely = cards.filter((c) => !c.in && !c.out).map((c) => c.id);
   if (lonely.length) console.log(`${src.id} no edges: ${lonely.join(", ")}`);
 

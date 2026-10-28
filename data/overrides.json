@@ -1,5 +1,5 @@
 {
-  "_doc": "Curation layer applied after regex extraction, keyed by source id. layer: {cardId: layer}. removeEdges/addEdges: [{from,to,type}].",
+  "_doc": "Curation layer applied after regex extraction, keyed by source id. layer: {cardId: layer}. removeEdges/addEdges: [{from, to}]. Do not set type. makeEdge assigns it from the target layer via edgeTypeFor in src/types.ts.",
   "pstack": { "layer": {}, "removeEdges": [], "addEdges": [] },
   "gstack": { "layer": {}, "removeEdges": [], "addEdges": [] }
 }

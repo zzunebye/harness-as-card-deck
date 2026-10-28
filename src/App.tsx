@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import decksJson from "./data/decks.json";
-import { EDGE_INFO, type Deck, type EdgeType } from "./types.ts";
+import { EDGE_INFO, edgeDefinition, type Deck, type EdgeType } from "./types.ts";
 import type { Lens } from "./lib/layout.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
@@ -102,10 +102,8 @@ export function App() {
             </div>
           )}
           <ul className="edge-legend">
-            {(Object.keys(EDGE_INFO) as EdgeType[])
-              .filter((t) => t !== "next-in-sprint")
-              .map((t) => (
-                <li key={t}>
+            {(Object.keys(EDGE_INFO) as EdgeType[]).map((t) => (
+                <li key={t} title={edgeDefinition(t)}>
                   <i style={{ background: EDGE_INFO[t].color }} />
                   {EDGE_INFO[t].label}
                 </li>
