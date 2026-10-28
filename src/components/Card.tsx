@@ -8,6 +8,8 @@ interface Props {
   card: CardData;
   pose: Pose;
   delay: number;
+  /** Stiffer spring so a pick settles quickly (phones). */
+  fast: boolean;
   /** Pose to start from on mount, so the card glides into place. Omit to appear in place. */
   from?: { x: number; y: number; rotate: number; scale: number };
   focused: boolean;
@@ -38,7 +40,7 @@ function Face({ card }: { card: CardData }) {
   );
 }
 
-export const CardView = memo(function CardView({ card, pose, delay, from, focused, glow, tabbable, onNavigate, onFocusCard }: Props) {
+export const CardView = memo(function CardView({ card, pose, delay, fast, from, focused, glow, tabbable, onNavigate, onFocusCard }: Props) {
   const { setHovered, select } = useInteraction();
   const tilt = useRef<HTMLDivElement>(null);
   const raised = glow && !pose.dim;
@@ -76,7 +78,7 @@ export const CardView = memo(function CardView({ card, pose, delay, from, focuse
       style={{ "--u": CARD_SCALE, width: CARD_W, height: CARD_H, zIndex: raised ? 500 : pose.z, pointerEvents: pose.dim ? "none" : "auto" } as CSSProperties}
       initial={from ? { ...from, opacity: 1 } : false}
       animate={{ x: pose.x, y: pose.y, rotate: pose.rotate, scale: pose.scale, opacity: pose.dim ? 0.2 : 1 }}
-      transition={{ type: "spring", stiffness: 140, damping: 20, mass: 0.9, delay }}
+      transition={{ type: "spring", stiffness: fast ? 300 : 140, damping: fast ? 29 : 20, mass: 0.9, delay: fast ? delay / 2 : delay }}
     >
       <div
         className={`card-hover layer-${card.layer}${raised ? " glow" : ""}${focused ? " focused" : ""}`}
