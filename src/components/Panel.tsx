@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
 import { createResolver } from "../lib/refs.ts";
 import { remarkRefs } from "../lib/markdown.ts";
+import { useBodies } from "../lib/bodies.ts";
 import { useInteraction } from "../context.ts";
 import type { Phase } from "./Table.tsx";
 
@@ -72,6 +73,7 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
 export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase; card: Card | null; onClose(): void }) {
   const resolver = useMemo(() => createResolver(deck.cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })), deck.meta.id), [deck]);
   const scroller = useRef<HTMLDivElement>(null);
+  const bodies = useBodies(deck.meta.id);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
@@ -157,11 +159,17 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
           OUT {card.out} · IN {card.in}
         </p>
       </div>
-      <article className="md">
-        <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
-          {card.body}
-        </ReactMarkdown>
-      </article>
+      {bodies ? (
+        <article className="md">
+          <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+            {bodies[card.id]}
+          </ReactMarkdown>
+        </article>
+      ) : (
+        <p className="md md-loading" aria-busy="true">
+          Loading {card.path}…
+        </p>
+      )}
       <Attribution deck={deck} />
     </aside>
   );

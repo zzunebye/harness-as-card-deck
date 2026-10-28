@@ -3,6 +3,7 @@ import decksJson from "./data/decks.json";
 import { EDGE_INFO, edgeDefinition, type Deck, type EdgeType } from "./types.ts";
 import { lensesFor, type Launch, type Lens } from "./lib/layout.ts";
 import { parseUrlState, serializeUrlState } from "./lib/urlState.ts";
+import { loadBodies } from "./lib/bodies.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
 import { Panel } from "./components/Panel.tsx";
@@ -77,6 +78,11 @@ export function App() {
   const clear = useCallback(() => setTrail([]), []);
   // In drawer mode the first dismiss only hides the panel so the selected card's relations stay on the board.
   const dismiss = useCallback(() => (overlay && selected && panelOpen ? setPanelOpen(false) : clear()), [overlay, selected, panelOpen, clear]);
+
+  // Fetch the deck's card text while the stack and shuffle play, so it is there by the time a card can be opened.
+  useEffect(() => {
+    if (source) loadBodies(source);
+  }, [source]);
 
   const dealTimer = useRef<number>(0);
   // The deck the URL last named. A change pushes a history entry so Back returns to the previous deck or the lobby.

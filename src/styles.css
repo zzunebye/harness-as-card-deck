@@ -148,6 +148,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .legend dt { font-size: 20px; color: var(--gold); } .legend dd { margin: 0; font-size: 13px; }
 
 .md { font-size: 14.5px; line-height: 1.65; color: var(--panel-ink); overflow-wrap: anywhere; }
+.md-loading { margin: 0.7em 0; min-height: 60vh; color: var(--muted); }
 .md .lv1, .md .lv2, .md .lv3, .md .lv4 { font-family: var(--display); margin: 1.6em 0 0.5em; line-height: 1.25; }
 .md .lv1 { font-size: 22px; } .md .lv2 { font-size: 19px; } .md .lv3 { font-size: 16.5px; } .md .lv4 { font-size: 15px; }
 .md p, .md ul, .md ol { margin: 0.7em 0; }

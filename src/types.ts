@@ -26,10 +26,12 @@ export interface Card {
   title: string;
   description: string;
   path: string;
-  body: string;
   out: number;
   in: number;
 }
+
+/** Card markdown by card id. One lazily loaded chunk per deck, see `src/lib/bodies.ts`. */
+export type Bodies = Record<string, string>;
 
 export interface Edge {
   from: string;

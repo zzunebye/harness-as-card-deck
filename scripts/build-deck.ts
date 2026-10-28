@@ -1,16 +1,16 @@
-import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { createResolver } from "../src/lib/refs.ts";
 import { extractRefs } from "../src/lib/markdown.ts";
 import { assertEdgeTypes, edgeFromAdd, makeEdge } from "../src/lib/edges.ts";
-import { LAYER_ORDER, type Card, type Deck, type Edge, type Layer, type Stage } from "../src/types.ts";
+import { LAYER_ORDER, type Bodies, type Card, type Deck, type Edge, type Layer, type Stage } from "../src/types.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const allOverrides = JSON.parse(readFileSync(join(ROOT, "data/overrides.json"), "utf8"));
 
-type RawCard = Omit<Card, "out" | "in">;
+type RawCard = Omit<Card, "out" | "in"> & { body: string };
 
 interface Source {
   id: string;
@@ -135,12 +135,12 @@ const SOURCES: Source[] = [
   },
 ];
 
-function buildDeck(src: Source): Deck {
+function buildDeck(src: Source): { deck: Deck; bodies: Bodies } {
   const dir = join(ROOT, "vendor", src.id);
   const sha = readFileSync(join(ROOT, "vendor", `${src.id}.sha`), "utf8").trim();
   const overrides = allOverrides[src.id];
   const collected = src.collect((p) => readFileSync(join(dir, p), "utf8"), dir);
-  const cards: Card[] = collected.cards.map((c) => ({ ...c, out: 0, in: 0 }));
+  const cards = collected.cards.map((c) => ({ ...c, out: 0, in: 0 }));
 
   for (const c of cards) if (overrides.layer[c.id]) c.layer = overrides.layer[c.id];
 
@@ -191,13 +191,17 @@ function buildDeck(src: Source): Deck {
     }
   }
 
-  return {
+  const deck: Deck = {
     ...(stages && { stages }),
     meta: { id: src.id, label: src.label, repo: src.repo, subdir: src.subdir, sha, version: collected.version, license: src.license },
     about: readFileSync(join(ROOT, "data/about", `${src.id}.md`), "utf8").trim(),
-    cards,
+    cards: cards.map(({ body: _, ...card }): Card => card),
     edges: [...edges.values()],
   };
+  return { deck, bodies: Object.fromEntries(cards.map((c) => [c.id, c.body])) };
 }
 
-writeFileSync(join(ROOT, "src/data/decks.json"), JSON.stringify(SOURCES.map(buildDeck)));
+const built = SOURCES.map(buildDeck);
+writeFileSync(join(ROOT, "src/data/decks.json"), JSON.stringify(built.map((b) => b.deck)));
+mkdirSync(join(ROOT, "src/data/bodies"), { recursive: true });
+for (const { deck, bodies } of built) writeFileSync(join(ROOT, "src/data/bodies", `${deck.meta.id}.json`), JSON.stringify(bodies));
