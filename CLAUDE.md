@@ -35,4 +35,4 @@ Two stages: a build-time data pipeline, and a client that only consumes its outp
 | Rule | Enforced by |
 | --- | --- |
 | A relationship is `edgeTypeFor(target.layer)` (`EDGE_TYPE_BY_LAYER` in `src/types.ts`). `routes-to` targets a router, playbook, or skill. `cites-principle` targets a principle. `delegates-to-agent` targets an agent. Do not set `Edge.type` by hand. | `makeEdge` / `edgeFromAdd` reject an addEdge that includes `type`. `assertEdgeTypes` fails `npm run deck` when a stored type disagrees with the target layer. `npm run check` runs that check on `src/data/decks.json`. |
-| The legend renders every relationship the layer map emits. | `EdgeType` is the value union of `EDGE_TYPE_BY_LAYER`, so `EDGE_INFO` must have each one. `assertLegendSource` fails `npm run check` when `src/App.tsx` filters the legend. |
+| The legend renders every relationship the layer map emits, limited to the types the open deck's edges use. | `EdgeType` is the value union of `EDGE_TYPE_BY_LAYER`, so `EDGE_INFO` must have each one. `assertLegendSource` fails `npm run check` when `src/App.tsx` filters the legend. |
