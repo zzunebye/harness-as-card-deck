@@ -1,0 +1,5 @@
+{
+  "_doc": "Curation layer applied after regex extraction, keyed by source id. layer: {cardId: layer}. removeEdges/addEdges: [{from,to,type}].",
+  "pstack": { "layer": {}, "removeEdges": [], "addEdges": [] },
+  "gstack": { "layer": {}, "removeEdges": [], "addEdges": [] }
+}

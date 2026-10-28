@@ -1,0 +1,35 @@
+{
+  "name": "harness-stack-explorer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "fetch": "sh scripts/fetch-pstack.sh && sh scripts/fetch-gstack.sh",
+    "deck": "node scripts/build-deck.ts",
+    "dev": "npm run deck && vite",
+    "build": "npm run deck && tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "mdast-util-to-string": "^4.0.0",
+    "motion": "^12.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "shiki": "^3.0.0",
+    "unified": "^11.0.0",
+    "unist-util-visit": "^5.0.0",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^7.0.0"
+  }
+}
