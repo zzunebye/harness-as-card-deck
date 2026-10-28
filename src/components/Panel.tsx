@@ -3,7 +3,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
 import { createResolver } from "../lib/refs.ts";
-import { remarkRefs } from "../lib/markdown.ts";
+import { remarkDropComments, remarkRefs } from "../lib/markdown.ts";
 import { useBodies } from "../lib/bodies.ts";
 import { useInteraction } from "../context.ts";
 import type { Phase } from "./Table.tsx";
@@ -104,7 +104,7 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
     [],
   );
 
-  const remarkPlugins = useMemo(() => (card ? [remarkGfm, remarkRefs(resolver, card.id)] : [remarkGfm]), [resolver, card]);
+  const remarkPlugins = useMemo(() => (card ? [remarkGfm, remarkDropComments, remarkRefs(resolver, card.id)] : [remarkGfm, remarkDropComments]), [resolver, card]);
 
   if (!card && phase !== "dealt") {
     return (
