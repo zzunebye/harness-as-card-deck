@@ -39,6 +39,25 @@ const leadParagraph = (body: string) => {
 
 const subdirs = (dir: string, sub = "") => readdirSync(join(dir, sub), { withFileTypes: true }).filter((d) => d.isDirectory());
 
+const skillCards = (dir: string, read: (p: string) => string): RawCard[] => {
+  const cards: RawCard[] = [];
+  for (const d of subdirs(dir, "skills")) {
+    const path = `skills/${d.name}/SKILL.md`;
+    if (!existsSync(join(dir, path))) continue;
+    const { data, body } = splitFrontmatter(read(path));
+    cards.push({
+      id: `skill:${d.name}`,
+      layer: "skill",
+      name: d.name,
+      title: heading(body) ?? d.name,
+      description: String(data.description ?? "").trim(),
+      path,
+      body,
+    });
+  }
+  return cards;
+};
+
 const SOURCES: Source[] = [
   {
     id: "pstack",
@@ -115,21 +134,7 @@ const SOURCES: Source[] = [
     subdir: "",
     license: "MIT",
     collect(read, dir) {
-      const cards: RawCard[] = [];
-      for (const d of subdirs(dir, "skills")) {
-        const path = `skills/${d.name}/SKILL.md`;
-        if (!existsSync(join(dir, path))) continue;
-        const { data, body } = splitFrontmatter(read(path));
-        cards.push({
-          id: `skill:${d.name}`,
-          layer: "skill",
-          name: d.name,
-          title: heading(body) ?? d.name,
-          description: String(data.description ?? "").trim(),
-          path,
-          body,
-        });
-      }
+      const cards = skillCards(dir, read);
       return { cards, version: JSON.parse(read("package.json")).version };
     },
   },
@@ -140,21 +145,7 @@ const SOURCES: Source[] = [
     subdir: "",
     license: "Apache-2.0",
     collect(read, dir) {
-      const cards: RawCard[] = [];
-      for (const d of subdirs(dir, "skills")) {
-        const path = `skills/${d.name}/SKILL.md`;
-        if (!existsSync(join(dir, path))) continue;
-        const { data, body } = splitFrontmatter(read(path));
-        cards.push({
-          id: `skill:${d.name}`,
-          layer: "skill",
-          name: d.name,
-          title: heading(body) ?? d.name,
-          description: String(data.description ?? "").trim(),
-          path,
-          body,
-        });
-      }
+      const cards = skillCards(dir, read);
       // The upstream repo has no version file, so the pinned commit stands in for one.
       return { cards, version: read("../anthropic.sha").trim().slice(0, 7) };
     },
