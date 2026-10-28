@@ -205,9 +205,18 @@ pre.code code { font: 12.5px var(--mono); }
 .lobby-deck:focus-visible { outline: 2px solid var(--gold); }
 
 .skills-footer { max-width: 720px; padding: 0 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; font-size: 13px; color: var(--muted); }
+.skills-compact { display: none; }
+.skills-compact summary { cursor: pointer; color: var(--gold); font: 500 13px var(--mono); text-align: center; }
+.skills-compact[open] summary { margin-bottom: 12px; }
 .skills-footer p { margin: 0; line-height: 1.6; }
 .skills-footer b { color: var(--panel-ink); }
 .skills-footer code { font: 500 12px var(--mono); }
 .skills-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; }
 .skills-footer a { color: #8ab8ff; text-decoration: none; white-space: nowrap; }
 .skills-footer a:hover, .skills-footer a:focus-visible { text-decoration: underline; }
+
+@media (max-width: 1100px) {
+  .lobby { gap: 24px; }
+  .skills-wide { display: none; }
+  .skills-compact { display: flex; }
+}

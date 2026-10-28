@@ -19,6 +19,7 @@ export function Lobby({ decks, onPick }: { decks: Deck[]; onPick(id: string, fro
   return (
     <main className="lobby">
       <h2>Pick a deck!</h2>
+      <SkillsFooter compact />
       <ul>
         {decks.map((d) => {
           const count = layerCount(d.cards.length);

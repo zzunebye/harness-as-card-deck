@@ -8,9 +8,9 @@ const LINKS = [
   { label: "anthropics/skills", href: "https://github.com/anthropics/skills" },
 ];
 
-export function SkillsFooter() {
+function Body() {
   return (
-    <section className="skills-footer">
+    <>
       <p>
         A skill is a folder with a <code>SKILL.md</code> file. Claude keeps only the skill's name and description in context. When a request matches the description, Claude reads the <code>SKILL.md</code> body, and it reads bundled files only if the body points to them.
       </p>
@@ -21,6 +21,23 @@ export function SkillsFooter() {
           </a>
         ))}
       </nav>
+    </>
+  );
+}
+
+// Both variants stay in the DOM and CSS shows one: the footer on wide screens, the collapsed disclosure under the heading on tablet and below.
+export function SkillsFooter({ compact = false }: { compact?: boolean }) {
+  if (compact) {
+    return (
+      <details className="skills-footer skills-compact">
+        <summary>What is a skill?</summary>
+        <Body />
+      </details>
+    );
+  }
+  return (
+    <section className="skills-footer skills-wide">
+      <Body />
     </section>
   );
 }
