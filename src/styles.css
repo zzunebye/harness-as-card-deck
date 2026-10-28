@@ -24,14 +24,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .app { display: flex; flex-direction: column; height: 100%; }
 .topbar { display: flex; align-items: center; gap: 24px; height: 60px; flex-shrink: 0; padding: 0 20px; background: #0a0f0d; border-bottom: 1px solid #1c2a24; }
 .topbar > * { flex-shrink: 0; white-space: nowrap; }
-.topbar > .edge-legend { flex-shrink: 1; }
 .topbar h1 { margin: 0; font: 700 20px var(--display); letter-spacing: 0.01em; }
 .topbar h1 span { color: var(--gold); margin-right: 8px; font-size: 16px; letter-spacing: 3px; }
 .topbar h1 em { font: 500 12px var(--mono); color: var(--muted); margin-left: 8px; font-style: normal; border: 1px solid #2a3a33; border-radius: 99px; padding: 2px 8px; }
 .lenses { display: flex; gap: 4px; background: #121a16; padding: 3px; border-radius: 10px; }
 .lenses button { border: 0; background: transparent; padding: 6px 14px; border-radius: 8px; font-size: 13px; color: var(--muted); }
 .lenses button.on { background: var(--gold); color: #1d1704; font-weight: 600; }
-.edge-legend { display: flex; gap: 14px; margin: 0 0 0 auto; min-width: 0; overflow: hidden; white-space: nowrap; padding: 0; list-style: none; font: 12px var(--mono); color: var(--muted); }
+.edge-legend { position: absolute; right: 12px; bottom: 12px; z-index: 60; display: flex; gap: 14px; margin: 0; padding: 8px 12px; background: rgba(10,15,13,0.85); border: 1px solid #1c2a24; border-radius: 10px; white-space: nowrap; list-style: none; font: 12px var(--mono); color: var(--muted); }
 .edge-legend li { display: flex; align-items: center; gap: 6px; }
 .edge-legend i { width: 18px; height: 3px; border-radius: 2px; box-shadow: 0 0 6px currentColor; }
 
@@ -191,13 +190,13 @@ pre.code code { font: 12.5px var(--mono); }
 .source-select:focus-visible { outline: 2px solid var(--gold); }
 @media (max-width: 900px) {
   .topbar { height: auto; min-height: 60px; flex-wrap: wrap; padding: 8px 20px; gap: 8px 16px; }
-  .edge-legend { display: none; }
   .source-tabs { display: none; }
   .source-select { display: block; }
 }
 @media (max-width: 640px) {
   .panel { width: 100%; }
   .topbar { padding: 8px 12px; gap: 8px; }
+  .edge-legend { flex-direction: column; gap: 4px; }
   .topbar h1 { flex-basis: 100%; font-size: clamp(16px, 4.6vw, 20px); }
   .source-select { padding: 0 26px 0 10px; background-position: right 9px center; }
   .lenses button { padding: 6px 9px; }

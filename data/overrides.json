@@ -164,5 +164,52 @@
         "utility": true
       }
     ]
+  },
+  "anthropic": {
+    "layer": {},
+    "removeEdges": [],
+    "addEdges": [],
+    "stages": [
+      {
+        "id": "build",
+        "label": "Build",
+        "cards": [
+          "skill:mcp-builder",
+          "skill:claude-api",
+          "skill:webapp-testing",
+          "skill:web-artifacts-builder"
+        ]
+      },
+      {
+        "id": "design",
+        "label": "Design",
+        "cards": [
+          "skill:frontend-design",
+          "skill:canvas-design",
+          "skill:algorithmic-art",
+          "skill:theme-factory",
+          "skill:brand-guidelines",
+          "skill:slack-gif-creator"
+        ]
+      },
+      {
+        "id": "write",
+        "label": "Write",
+        "cards": [
+          "skill:doc-coauthoring",
+          "skill:internal-comms"
+        ]
+      },
+      {
+        "id": "meta",
+        "label": "Meta",
+        "utility": true,
+        "cards": [
+          "skill:skill-creator",
+          "skill:academy-guide",
+          "skill:discernment-nudge"
+        ]
+      }
+    ]
   }
 }

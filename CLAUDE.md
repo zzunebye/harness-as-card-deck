@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Harness as Deck: a React + Vite SPA that renders [cursor/plugins `pstack/`](https://github.com/cursor/plugins/tree/main/pstack) (skills, playbooks, principles, agents) and [garrytan/gstack](https://github.com/garrytan/gstack) (skills) as interactive card decks, switchable in the topbar. Content is MIT-licensed (`public/pstack-LICENSE.txt`, `public/gstack-LICENSE.txt`).
+Harness as Deck: a React + Vite SPA that renders [cursor/plugins `pstack/`](https://github.com/cursor/plugins/tree/main/pstack) (skills, playbooks, principles, agents), [garrytan/gstack](https://github.com/garrytan/gstack), [obra/superpowers](https://github.com/obra/superpowers), and [anthropics/skills](https://github.com/anthropics/skills) (skills) as interactive card decks, switchable in the topbar. Content is MIT-licensed (`public/pstack-LICENSE.txt`, `public/gstack-LICENSE.txt`, `public/superpowers-LICENSE.txt`), except anthropics/skills, which is Apache-2.0 (`public/anthropic-LICENSE.txt`); its source-available `docx`, `pdf`, `pptx`, `xlsx` skills are deliberately not vendored.
 
 ## Commands
 
@@ -35,4 +35,4 @@ Two stages: a build-time data pipeline, and a client that only consumes its outp
 | Rule | Enforced by |
 | --- | --- |
 | A relationship is `edgeTypeFor(target.layer)` (`EDGE_TYPE_BY_LAYER` in `src/types.ts`). `routes-to` targets a router, playbook, or skill. `cites-principle` targets a principle. `delegates-to-agent` targets an agent. Do not set `Edge.type` by hand. | `makeEdge` / `edgeFromAdd` reject an addEdge that includes `type`. `assertEdgeTypes` fails `npm run deck` when a stored type disagrees with the target layer. `npm run check` runs that check on `src/data/decks.json`. |
-| The legend renders every relationship the layer map emits. | `EdgeType` is the value union of `EDGE_TYPE_BY_LAYER`, so `EDGE_INFO` must have each one. `assertLegendSource` fails `npm run check` when `src/App.tsx` filters the legend. |
+| The legend renders every relationship the layer map emits, limited to the types the open deck's edges use. | `EdgeType` is the value union of `EDGE_TYPE_BY_LAYER`, so `EDGE_INFO` must have each one. `assertLegendSource` fails `npm run check` when `src/App.tsx` filters the legend. |
