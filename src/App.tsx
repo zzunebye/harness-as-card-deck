@@ -210,11 +210,18 @@ export function App() {
         <header className="topbar">
           <h1>
             <button className="home" onClick={() => switchSource(null)} aria-label="All decks">
-              <span>♠♥♦♣</span> Harness as Deck
+              <span>♠♥♦♣</span><b className="title">Harness as Deck</b>
             </button>
           </h1>
           {deck && (
-            <div className="lenses" role="tablist" aria-label="Source">
+            <select className="source-select" aria-label="Deck" value={source ?? ""} onChange={(e) => switchSource(e.target.value)}>
+              {decks.map((d) => (
+                <option key={d.meta.id} value={d.meta.id}>{d.meta.label}</option>
+              ))}
+            </select>
+          )}
+          {deck && (
+            <div className="lenses source-tabs" role="tablist" aria-label="Source">
             {decks.map((d) => (
               <button key={d.meta.id} role="tab" aria-selected={source === d.meta.id} className={source === d.meta.id ? "on" : ""} onClick={() => switchSource(d.meta.id)}>
                 {d.meta.label}
