@@ -245,15 +245,6 @@ export function App() {
               ))}
             </select>
           )}
-          {deck && (
-            <div className="lenses source-tabs" role="tablist" aria-label="Source">
-            {decks.map((d) => (
-              <button key={d.meta.id} role="tab" aria-selected={source === d.meta.id} className={source === d.meta.id ? "on" : ""} onClick={() => switchSource(d.meta.id)}>
-                {d.meta.label}
-              </button>
-            ))}
-          </div>
-          )}
           {deck && phase === "dealt" && (
             <div className="lenses" role="tablist" aria-label="Lens">
               {lensesFor(deck).map((l) => (
