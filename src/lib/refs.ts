@@ -66,11 +66,15 @@ export function createResolver(targets: RefTarget[], namespace?: string): Resolv
 
   return {
     byCode(value) {
+      if (value.trim().startsWith("#")) return undefined;
       const v = value.trim().replace(/^\//, "").replace(nsPrefix, "");
       return byPath(v) ?? aliases.get(v) ?? aliases.get(slugify(v));
     },
     byBold(text) {
-      return aliases.get(slugify(text.replace(/[.:,;]+$/, "")));
+      const id = aliases.get(slugify(text.replace(/[.:,;]+$/, "")));
+      // "**Why:**" / "**why.**" are field labels, not mentions of the skill
+      if (id?.startsWith("skill:") && /[.:,;]$/.test(text)) return undefined;
+      return id;
     },
     byLink: byPath,
     slashPattern,
