@@ -24,9 +24,10 @@ export interface Resolver {
   byBold(text: string): string | undefined;
   byLink(url: string): string | undefined;
   slashPattern: RegExp;
+  namespacePattern?: RegExp;
 }
 
-export function createResolver(targets: RefTarget[]): Resolver {
+export function createResolver(targets: RefTarget[], namespace?: string): Resolver {
   const rank = (t: RefTarget) => PRIORITY.indexOf(t.layer);
   const sorted = [...targets].sort((a, b) => rank(a) - rank(b));
   const aliases = new Map<string, string>();
@@ -58,9 +59,14 @@ export function createResolver(targets: RefTarget[]): Resolver {
   const names = [...aliases.keys()].filter((a) => /^[a-z][a-z0-9-]*$/.test(a));
   const slashPattern = new RegExp(`(?<![\\w./-])/(${names.sort((a, b) => b.length - a.length).join("|")})(?![\\w-])`, "g");
 
+  const nsPrefix = namespace ? `${namespace}:` : "";
+  const namespacePattern = namespace
+    ? new RegExp(`(?<![\\w-])${nsPrefix}(${names.join("|")})(?![\\w-])`, "g")
+    : undefined;
+
   return {
     byCode(value) {
-      const v = value.trim().replace(/^\//, "");
+      const v = value.trim().replace(/^\//, "").replace(nsPrefix, "");
       return byPath(v) ?? aliases.get(v) ?? aliases.get(slugify(v));
     },
     byBold(text) {
@@ -68,6 +74,7 @@ export function createResolver(targets: RefTarget[]): Resolver {
     },
     byLink: byPath,
     slashPattern,
+    namespacePattern,
   };
 }
 
@@ -86,6 +93,12 @@ function splitText(value: string, resolver: Resolver, self: string, onRef: (id: 
   for (const m of value.matchAll(new RegExp(resolver.slashPattern))) {
     const id = resolver.byCode(m[1]);
     if (id && id !== self) hits.push({ start: m.index!, end: m.index! + m[0].length, id });
+  }
+  if (resolver.namespacePattern) {
+    for (const m of value.matchAll(new RegExp(resolver.namespacePattern))) {
+      const id = resolver.byCode(m[1]);
+      if (id && id !== self) hits.push({ start: m.index!, end: m.index! + m[0].length, id });
+    }
   }
   for (const m of value.matchAll(PLAIN_PRINCIPLE)) {
     const id = resolver.byCode(m[0]);

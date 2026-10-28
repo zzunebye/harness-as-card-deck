@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Skill Deck Explorer: a React + Vite SPA that renders [cursor/plugins `pstack/`](https://github.com/cursor/plugins/tree/main/pstack) (skills, playbooks, principles, agents) and [garrytan/gstack](https://github.com/garrytan/gstack) (skills) as interactive card decks, switchable in the topbar. Content is MIT-licensed (`public/pstack-LICENSE.txt`, `public/gstack-LICENSE.txt`).
+Harness as Deck: a React + Vite SPA that renders [cursor/plugins `pstack/`](https://github.com/cursor/plugins/tree/main/pstack) (skills, playbooks, principles, agents) and [garrytan/gstack](https://github.com/garrytan/gstack) (skills) as interactive card decks, switchable in the topbar. Content is MIT-licensed (`public/pstack-LICENSE.txt`, `public/gstack-LICENSE.txt`).
 
 ## Commands
 

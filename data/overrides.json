@@ -1,5 +1,168 @@
 {
-  "_doc": "Curation layer applied after regex extraction, keyed by source id. layer: {cardId: layer}. removeEdges/addEdges: [{from, to}]. Do not set type. makeEdge assigns it from the target layer via edgeTypeFor in src/types.ts.",
-  "pstack": { "layer": {}, "removeEdges": [], "addEdges": [] },
-  "gstack": { "layer": {}, "removeEdges": [], "addEdges": [] }
+  "_doc": "Curation layer applied after regex extraction, keyed by source id. layer: {cardId: layer}. removeEdges/addEdges: [{from, to}]. Do not set type. makeEdge assigns it from the target layer via edgeTypeFor in src/types.ts. stages: ordered sprint stages [{id, label, utility?, cards}]; cards not listed fall into a trailing Other stage.",
+  "pstack": {
+    "layer": {},
+    "removeEdges": [],
+    "addEdges": []
+  },
+  "gstack": {
+    "layer": {},
+    "removeEdges": [],
+    "addEdges": [],
+    "stages": [
+      {
+        "id": "think",
+        "label": "Think",
+        "cards": [
+          "skill:office-hours"
+        ]
+      },
+      {
+        "id": "plan",
+        "label": "Plan",
+        "cards": [
+          "skill:autoplan",
+          "skill:plan-ceo-review",
+          "skill:plan-eng-review",
+          "skill:plan-design-review",
+          "skill:design-consultation"
+        ]
+      },
+      {
+        "id": "build",
+        "label": "Build",
+        "cards": [
+          "skill:design-shotgun",
+          "skill:design-html",
+          "skill:investigate"
+        ]
+      },
+      {
+        "id": "review",
+        "label": "Review",
+        "cards": [
+          "skill:review",
+          "skill:codex",
+          "skill:cso",
+          "skill:design-review"
+        ]
+      },
+      {
+        "id": "test",
+        "label": "Test",
+        "cards": [
+          "skill:qa",
+          "skill:qa-only",
+          "skill:benchmark"
+        ]
+      },
+      {
+        "id": "ship",
+        "label": "Ship",
+        "cards": [
+          "skill:ship",
+          "skill:land-and-deploy",
+          "skill:setup-deploy",
+          "skill:canary",
+          "skill:document-release"
+        ]
+      },
+      {
+        "id": "reflect",
+        "label": "Reflect",
+        "cards": [
+          "skill:retro",
+          "skill:learn",
+          "skill:checkpoint",
+          "skill:health"
+        ]
+      },
+      {
+        "id": "tools",
+        "label": "Tools",
+        "utility": true,
+        "cards": [
+          "skill:browse",
+          "skill:connect-chrome",
+          "skill:setup-browser-cookies",
+          "skill:careful",
+          "skill:freeze",
+          "skill:guard",
+          "skill:unfreeze",
+          "skill:gstack-upgrade"
+        ]
+      }
+    ]
+  },
+  "superpowers": {
+    "layer": {},
+    "removeEdges": [],
+    "addEdges": [],
+    "stages": [
+      {
+        "id": "design",
+        "label": "Design",
+        "cards": [
+          "skill:brainstorming"
+        ]
+      },
+      {
+        "id": "isolate",
+        "label": "Isolate",
+        "cards": [
+          "skill:using-git-worktrees"
+        ]
+      },
+      {
+        "id": "plan",
+        "label": "Plan",
+        "cards": [
+          "skill:writing-plans"
+        ]
+      },
+      {
+        "id": "build",
+        "label": "Build",
+        "cards": [
+          "skill:subagent-driven-development",
+          "skill:executing-plans",
+          "skill:test-driven-development"
+        ]
+      },
+      {
+        "id": "review",
+        "label": "Review",
+        "cards": [
+          "skill:requesting-code-review",
+          "skill:receiving-code-review"
+        ]
+      },
+      {
+        "id": "finish",
+        "label": "Finish",
+        "cards": [
+          "skill:finishing-a-development-branch",
+          "skill:verification-before-completion"
+        ]
+      },
+      {
+        "id": "repair",
+        "label": "Repair",
+        "cards": [
+          "skill:systematic-debugging",
+          "skill:diagnosing-superpowers"
+        ]
+      },
+      {
+        "id": "meta",
+        "label": "Meta",
+        "cards": [
+          "skill:using-superpowers",
+          "skill:writing-skills",
+          "skill:dispatching-parallel-agents"
+        ],
+        "utility": true
+      }
+    ]
+  }
 }

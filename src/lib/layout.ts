@@ -1,12 +1,33 @@
-import type { Card, Edge, Layer } from "../types.ts";
+import type { Card, Deck, Edge, Layer, Stage } from "../types.ts";
 import { LAYER_ORDER } from "../types.ts";
 
 export const WORLD_W = 1300;
-export const WORLD_H = 1000;
-export const CARD_W = 120;
-export const CARD_H = 168;
+// Tall enough that the longest layer pile (33 skills) keeps each card's first header line uncovered.
+export const WORLD_H = 1080;
+/** Card size relative to the 120x168 design the card CSS was drawn at; card text scales with it via `--u`. */
+export const CARD_SCALE = 1.2;
+export const CARD_W = Math.round(120 * CARD_SCALE);
+export const CARD_H = Math.round(168 * CARD_SCALE);
 
-export type Lens = "layer" | "tree";
+export type Lens = "layer" | "tree" | "sprint" | "scatter";
+
+export const LENSES: { id: Lens; label: string }[] = [
+  { id: "layer", label: "Layer" },
+  { id: "tree", label: "Route Tree" },
+  { id: "sprint", label: "Sprint" },
+  { id: "scatter", label: "Scatter" },
+];
+
+/** Scatter works for any deck; the other lenses need the deck's layers (layer, tree) or stages (sprint). */
+export const lensesFor = (d: Deck) =>
+  LENSES.filter((l) => (l.id === "scatter" ? true : l.id === "sprint" ? !!d.stages : !d.stages));
+
+/** Where a deck sat on screen when it was picked: center and card width in viewport px. */
+export interface Launch {
+  cx: number;
+  cy: number;
+  w: number;
+}
 
 export interface Pose {
   x: number;
@@ -57,7 +78,7 @@ function layerLayout(cards: Card[]): Map<string, Pose> {
   const out = new Map<string, Pose>();
   LAYER_ORDER.forEach((layer, col) => {
     const list = groups[layer];
-    const step = list.length > 1 ? Math.min(34, (WORLD_H - 100 - CARD_H - 20) / (list.length - 1)) : 0;
+    const step = list.length > 1 ? Math.min(34 * CARD_SCALE, (WORLD_H - 100 - CARD_H - 8) / (list.length - 1)) : 0;
     list.forEach((c, i) => out.set(c.id, pose(LAYER_COLUMN_X(col), 100 + i * step, i)));
   });
   return out;
@@ -83,8 +104,78 @@ function treeLayout(cards: Card[]): Map<string, Pose> {
   return out;
 }
 
-export function lensLayout(cards: Card[], lens: Lens): Map<string, Pose> {
-  return lens === "layer" ? layerLayout(cards) : treeLayout(cards);
+export const stageX = (i: number, n: number) => (WORLD_W * (i + 0.5)) / n - CARD_W / 2;
+
+const MAX_PER_COL = 6;
+const WRAP_AT = 7;
+const ROW_H = WORLD_H / 2;
+
+/** Long stages wrap into several columns, and a wide sprint breaks into two rows at the most balanced stage boundary. */
+export function stageSlots(stages: Stage[]) {
+  const cols = stages.map((st) => Math.max(1, Math.ceil(st.cards.length / MAX_PER_COL)));
+  const total = cols.reduce((a, b) => a + b, 0);
+  let split = stages.length;
+  if (total >= WRAP_AT) {
+    let best = Infinity;
+    let head = 0;
+    for (let i = 1; i < stages.length; i++) {
+      head += cols[i - 1];
+      const gap = Math.abs(total - 2 * head);
+      if (gap < best) [best, split] = [gap, i];
+    }
+  }
+  const rows = [stages.slice(0, split), stages.slice(split)].filter((r) => r.length);
+  const rowCols = rows.map((_, r) => cols.slice(r ? split : 0, r ? undefined : split).reduce((a, b) => a + b, 0));
+  let idx = 0;
+  return rows.flatMap((row, r) => {
+    const y0 = rows.length > 1 ? r * ROW_H : 0;
+    const height = rows.length > 1 ? ROW_H : WORLD_H;
+    let k = 0;
+    return row.map((stage) => {
+      const xs = Array.from({ length: cols[idx] }, (_, j) => stageX(k + j, rowCols[r]));
+      k += cols[idx++];
+      return { stage, xs, y0, height, labelX: (xs[0] + xs[xs.length - 1]) / 2 };
+    });
+  });
+}
+
+function sprintLayout(stages: Stage[]): Map<string, Pose> {
+  const out = new Map<string, Pose>();
+  for (const { stage, xs, y0, height } of stageSlots(stages)) {
+    const perCol = Math.ceil(stage.cards.length / xs.length);
+    const step = perCol > 1 ? Math.min(CARD_H * 0.8, (height - 100 - CARD_H - 40) / (perCol - 1)) : 0;
+    stage.cards.forEach((id, i) => out.set(id, pose(xs[Math.floor(i / perCol)], y0 + 100 + (i % perCol) * step, i % perCol)));
+  }
+  return out;
+}
+
+const hash = (s: string) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h ^ (h >>> 15)) >>> 0;
+};
+const unit = (id: string, salt: string) => hash(id + salt) / 0xffffffff - 0.5;
+
+// Jittered grid with random tilt: cards look tossed on the table but stay deterministic and mostly visible.
+function scatterLayout(cards: Card[]): Map<string, Pose> {
+  const cols = Math.ceil(Math.sqrt((cards.length * WORLD_W) / WORLD_H));
+  const rows = Math.ceil(cards.length / cols);
+  const cw = (WORLD_W - 80) / cols;
+  const ch = (WORLD_H - 80) / rows;
+  const order = [...cards].sort((a, b) => hash(a.id) - hash(b.id));
+  return new Map(
+    order.map((c, i) => {
+      const x = 40 + (i % cols) * cw + (cw - CARD_W) / 2 + unit(c.id, "x") * (cw - CARD_W * 0.7);
+      const y = 40 + Math.floor(i / cols) * ch + (ch - CARD_H) / 2 + unit(c.id, "y") * (ch - CARD_H * 0.7);
+      return [c.id, pose(x, y, i, { rotate: unit(c.id, "r") * 44 })];
+    }),
+  );
+}
+
+export function lensLayout(cards: Card[], lens: Lens, stages: Stage[] = []): Map<string, Pose> {
+  if (lens === "sprint" && stages.length) return sprintLayout(stages);
+  if (lens === "scatter") return scatterLayout(cards);
+  return lens === "tree" ? treeLayout(cards) : layerLayout(cards);
 }
 
 export function deckLayout(cards: Card[]) {
@@ -121,7 +212,7 @@ export function focusLayout(
   const ringsFor = (count: number, s: number, span: number) => {
     if (!count) return { caps: [], step: 0, reach: 0 };
     const spacing = (CARD_W + 14) * s;
-    const step = 110 * s + 30;
+    const step = CARD_H * 0.655 * s + 30;
     const caps: number[] = [];
     for (let left = count, r = RING_START; left > 0; r += step) {
       const cap = Math.max(3, Math.floor((r * span) / spacing));
@@ -142,7 +233,7 @@ export function focusLayout(
 
   const fan = (ids: Set<string>, side: 1 | -1, span: number, scale: number) => {
     const spacing = (CARD_W + 14) * scale;
-    const ringStep = 110 * scale + 30;
+    const ringStep = CARD_H * 0.655 * scale + 30;
     const rings: string[][] = [];
     const rest = [...ids].sort((a, b) => degree(b) - degree(a));
     for (let r = RING_START; rest.length; r += ringStep) {

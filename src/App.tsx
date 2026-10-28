@@ -1,61 +1,141 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import decksJson from "./data/decks.json";
 import { EDGE_INFO, edgeDefinition, type Deck, type EdgeType } from "./types.ts";
-import type { Lens } from "./lib/layout.ts";
+import { lensesFor, type Launch, type Lens } from "./lib/layout.ts";
+import { parseUrlState, serializeUrlState } from "./lib/urlState.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
 import { Panel } from "./components/Panel.tsx";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
+import { Lobby } from "./components/Lobby.tsx";
 
 const decks = decksJson as Deck[];
 
-const LENSES: { id: Lens; label: string }[] = [
-  { id: "layer", label: "Layer" },
-  { id: "tree", label: "Route Tree" },
-];
+function readPanelW() {
+  try {
+    return Number(localStorage.getItem("panelW")) || 520;
+  } catch {
+    return 520;
+  }
+}
+
+function savePanelW(w: number) {
+  try {
+    localStorage.setItem("panelW", String(Math.round(w)));
+  } catch {}
+}
+
+const OVERLAY_MAX = 1100;
+const PHONE_MAX = 640;
+
+function useViewportWidth() {
+  const [w, setW] = useState(window.innerWidth);
+  useEffect(() => {
+    const on = () => setW(window.innerWidth);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return w;
+}
+
+// A link that names a lens or card skips the shuffle intro.
+const skipsIntro = (search: string, state: ReturnType<typeof parseUrlState>) => state !== null && (state.card !== null || new URLSearchParams(search).has("lens"));
+
+const initial = parseUrlState(location.search, decks);
 
 export function App() {
-  const [phase, setPhase] = useState<Phase>("stack");
-  const [lens, setLens] = useState<Lens>("layer");
-  const [source, setSource] = useState(decks[0].meta.id);
-  const [trail, setTrail] = useState<string[]>([]);
+  const [phase, setPhase] = useState<Phase>(skipsIntro(location.search, initial) ? "dealt" : "stack");
+  const [lens, setLens] = useState<Lens>(initial?.lens ?? lensesFor(decks[0])[0].id);
+  // null is the lobby, where every deck sits as its own stack until one is picked.
+  const [source, setSource] = useState<string | null>(initial?.source ?? null);
+  const [trail, setTrail] = useState<string[]>(initial?.card ? [initial.card] : []);
   const [hovered, setHovered] = useState<string | null>(null);
+  // Where the picked deck sat in the lobby. Only the Table that mounts for that pick starts from it.
+  const [launch, setLaunch] = useState<Launch | null>(null);
   const [flow, setFlow] = useState({ in: true, out: true });
-  const [panelW, setPanelW] = useState(() => Number(localStorage.getItem("panelW")) || 520);
+  const [panelW, setPanelW] = useState(readPanelW);
 
-  const deck = decks.find((d) => d.meta.id === source)!;
-  const cards = useMemo(() => new Map(deck.cards.map((c) => [c.id, c])), [deck]);
+  const vw = useViewportWidth();
+  const overlay = vw <= OVERLAY_MAX;
+
+  const deck = decks.find((d) => d.meta.id === source) ?? null;
+  const cards = useMemo(() => new Map((deck?.cards ?? []).map((c) => [c.id, c])), [deck]);
+  const [panelOpen, setPanelOpen] = useState(true);
   const selected = trail.at(-1) ?? null;
+  // Keep the board visible beside the drawer, except on phones where the drawer covers it.
+  const inset = overlay && selected && panelOpen && vw > PHONE_MAX ? Math.min(panelW, vw * 0.55) : 0;
 
   const select = useCallback((id: string) => {
     setHovered(null);
+    setPanelOpen(true);
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
   const clear = useCallback(() => setTrail([]), []);
+  // In drawer mode the first dismiss only hides the panel so the selected card's relations stay on the board.
+  const dismiss = useCallback(() => (overlay && selected && panelOpen ? setPanelOpen(false) : clear()), [overlay, selected, panelOpen, clear]);
 
-  const switchSource = useCallback((id: string) => {
+  const dealTimer = useRef<number>(0);
+  // The deck the URL last named. A change pushes a history entry so Back returns to the previous deck or the lobby.
+  const urlSource = useRef<string | null>(initial?.source ?? null);
+
+  const switchSource = useCallback((id: string | null, from: Launch | null = null) => {
+    clearTimeout(dealTimer.current);
     setHovered(null);
     setTrail([]);
+    setPhase("stack");
+    setLaunch(from);
+    if (id) setLens(lensesFor(decks.find((d) => d.meta.id === id)!)[0].id);
     setSource(id);
   }, []);
 
   const deal = useCallback(() => {
     setPhase("shuffling");
-    setTimeout(() => setPhase("dealt"), 900);
+    dealTimer.current = window.setTimeout(() => setPhase("dealt"), 900);
+  }, []);
+
+  useEffect(() => () => clearTimeout(dealTimer.current), []);
+
+  // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
+  useEffect(() => {
+    const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
+    const id = deck?.meta.id ?? null;
+    const url = location.pathname + search;
+    if (id !== urlSource.current) {
+      urlSource.current = id;
+      history.pushState(null, "", url);
+    } else {
+      history.replaceState(null, "", url);
+    }
+  }, [lens, selected, phase, deck]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const state = parseUrlState(location.search, decks);
+      clearTimeout(dealTimer.current);
+      urlSource.current = state?.source ?? null;
+      setHovered(null);
+      setLaunch(null);
+      setSource(state?.source ?? null);
+      setLens(state?.lens ?? lensesFor(decks[0])[0].id);
+      setTrail(state?.card ? [state.card] : []);
+      setPhase(skipsIntro(location.search, state) ? "dealt" : "stack");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && clear();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [clear]);
+  }, [dismiss]);
 
   const startResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     const move = (ev: PointerEvent) => {
       const w = Math.min(Math.max(window.innerWidth - ev.clientX, 320), window.innerWidth * 0.8);
       setPanelW(w);
-      localStorage.setItem("panelW", String(Math.round(w)));
+      savePanelW(w);
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
@@ -74,29 +154,24 @@ export function App() {
       <div className="app">
         <header className="topbar">
           <h1>
-            <span>♠♥♦♣</span> Skill Deck <em>{deck.meta.label}</em>
+            <button className="home" onClick={() => switchSource(null)} aria-label="All decks">
+              <span>♠♥♦♣</span> Harness as Deck
+            </button>
           </h1>
-          <div className="lenses" role="tablist" aria-label="Source">
+          {deck && (
+            <div className="lenses" role="tablist" aria-label="Source">
             {decks.map((d) => (
               <button key={d.meta.id} role="tab" aria-selected={source === d.meta.id} className={source === d.meta.id ? "on" : ""} onClick={() => switchSource(d.meta.id)}>
                 {d.meta.label}
               </button>
             ))}
           </div>
-          {phase === "dealt" && (
+          )}
+          {deck && phase === "dealt" && (
             <div className="lenses" role="tablist" aria-label="Lens">
-              {LENSES.map((l) => (
+              {lensesFor(deck).map((l) => (
                 <button key={l.id} role="tab" aria-selected={lens === l.id} className={lens === l.id ? "on" : ""} onClick={() => setLens(l.id)}>
                   {l.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {phase === "dealt" && (
-            <div className="flow-toggles" role="group" aria-label="Related cards">
-              {(["in", "out"] as const).map((k) => (
-                <button key={k} aria-pressed={flow[k]} className={flow[k] ? "on" : ""} onClick={() => setFlow((f) => ({ ...f, [k]: !f[k] }))}>
-                  {k === "in" ? "Inflow" : "Outflow"}
                 </button>
               ))}
             </div>
@@ -110,14 +185,18 @@ export function App() {
               ))}
           </ul>
         </header>
-        <main className="stage" style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
+        {!deck ? (
+          <Lobby decks={decks} onPick={switchSource} />
+        ) : (
+        <main className={`stage${overlay ? " overlay" : ""}${selected && panelOpen ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
-            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} />
-            <Table key={source} deck={deck} lens={lens} phase={phase} selected={selected} flow={flow} onDeal={deal} onBackground={clear} />
+            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+            <Table key={source} deck={deck} launch={launch} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} />
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label="Resize panel" onPointerDown={startResize} />
-          <Panel deck={deck} card={selected ? cards.get(selected)! : null} onClose={clear} />
+          <Panel deck={deck} card={selected ? cards.get(selected)! : null} onClose={dismiss} />
         </main>
+        )}
       </div>
     </InteractionContext.Provider>
   );

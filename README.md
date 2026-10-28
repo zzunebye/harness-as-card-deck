@@ -1,4 +1,4 @@
-# Skill Deck Explorer (MVP)
+# Harness as Deck (MVP)
 
 Interactive card-deck view of [cursor/plugins `pstack/`](https://github.com/cursor/plugins/tree/main/pstack) and [garrytan/gstack](https://github.com/garrytan/gstack), each pinned to the commit in `vendor/<id>.sha`. Switch between them in the topbar.
 

@@ -5,7 +5,7 @@ import { parse as parseYaml } from "yaml";
 import { createResolver } from "../src/lib/refs.ts";
 import { extractRefs } from "../src/lib/markdown.ts";
 import { assertEdgeTypes, edgeFromAdd, makeEdge } from "../src/lib/edges.ts";
-import { LAYER_ORDER, type Card, type Deck, type Edge, type Layer } from "../src/types.ts";
+import { LAYER_ORDER, type Card, type Deck, type Edge, type Layer, type Stage } from "../src/types.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const allOverrides = JSON.parse(readFileSync(join(ROOT, "data/overrides.json"), "utf8"));
@@ -108,6 +108,31 @@ const SOURCES: Source[] = [
       return { cards, version: read("VERSION").trim() };
     },
   },
+  {
+    id: "superpowers",
+    label: "superpowers",
+    repo: "obra/superpowers",
+    subdir: "",
+    license: "MIT",
+    collect(read, dir) {
+      const cards: RawCard[] = [];
+      for (const d of subdirs(dir, "skills")) {
+        const path = `skills/${d.name}/SKILL.md`;
+        if (!existsSync(join(dir, path))) continue;
+        const { data, body } = splitFrontmatter(read(path));
+        cards.push({
+          id: `skill:${d.name}`,
+          layer: "skill",
+          name: d.name,
+          title: heading(body) ?? d.name,
+          description: String(data.description ?? "").trim(),
+          path,
+          body,
+        });
+      }
+      return { cards, version: JSON.parse(read("package.json")).version };
+    },
+  },
 ];
 
 function buildDeck(src: Source): Deck {
@@ -120,7 +145,7 @@ function buildDeck(src: Source): Deck {
   for (const c of cards) if (overrides.layer[c.id]) c.layer = overrides.layer[c.id];
 
   const byId = new Map(cards.map((c) => [c.id, c]));
-  const resolver = createResolver(cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })));
+  const resolver = createResolver(cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })), src.id);
 
   const edges = new Map<string, Edge>();
   for (const c of cards) {
@@ -149,7 +174,25 @@ function buildDeck(src: Source): Deck {
   const lonely = cards.filter((c) => !c.in && !c.out).map((c) => c.id);
   if (lonely.length) console.log(`${src.id} no edges: ${lonely.join(", ")}`);
 
+  const stages: Stage[] | undefined = overrides.stages;
+  if (stages) {
+    const listed = new Set<string>();
+    for (const st of stages) {
+      for (const id of st.cards) {
+        if (!byId.has(id)) throw new Error(`${src.id} stage ${st.id}: unknown card ${id}`);
+        if (listed.has(id)) throw new Error(`${src.id} stage ${st.id}: ${id} listed twice`);
+        listed.add(id);
+      }
+    }
+    const rest = cards.filter((c) => !listed.has(c.id)).map((c) => c.id);
+    if (rest.length) {
+      console.log(`${src.id} not in a stage: ${rest.join(", ")}`);
+      stages.push({ id: "other", label: "Other", utility: true, cards: rest });
+    }
+  }
+
   return {
+    ...(stages && { stages }),
     meta: { id: src.id, label: src.label, repo: src.repo, subdir: src.subdir, sha, version: collected.version, license: src.license },
     cards,
     edges: [...edges.values()],

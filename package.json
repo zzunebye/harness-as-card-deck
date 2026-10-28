@@ -1,12 +1,12 @@
 {
-  "name": "harness-stack-explorer",
+  "name": "harness-as-card-deck",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "fetch": "sh scripts/fetch-pstack.sh && sh scripts/fetch-gstack.sh",
+    "fetch": "sh scripts/fetch-pstack.sh && sh scripts/fetch-gstack.sh && sh scripts/fetch-superpowers.sh",
     "deck": "node scripts/build-deck.ts",
-    "check": "tsc --noEmit && node --test scripts/edges.test.ts",
+    "check": "tsc --noEmit && node --test scripts/edges.test.ts scripts/urlState.test.ts",
     "dev": "npm run deck && vite",
     "build": "npm run deck && npm run check && vite build",
     "preview": "vite preview"

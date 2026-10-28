@@ -38,7 +38,17 @@ export interface Edge {
   weight: number;
 }
 
+export interface Stage {
+  id: string;
+  label: string;
+  /** Not a step in the sequence (shown without a number). */
+  utility?: boolean;
+  cards: string[];
+}
+
 export interface Deck {
+  /** Ordered workflow stages; only decks without meaningful layers set this. */
+  stages?: Stage[];
   meta: { id: string; label: string; repo: string; subdir: string; sha: string; version: string; license: string };
   cards: Card[];
   edges: Edge[];

@@ -1,6 +1,6 @@
 import { LAYER_INFO, type Card } from "../types.ts";
 
-export function Breadcrumbs({ trail, cards, onJump, onClear }: { trail: string[]; cards: Map<string, Card>; onJump(i: number): void; onClear(): void }) {
+export function Breadcrumbs({ trail, cards, onJump, onClear, onOpen }: { trail: string[]; cards: Map<string, Card>; onJump(i: number): void; onClear(): void; onOpen?(): void }) {
   if (!trail.length) return null;
   return (
     <nav className="crumbs" aria-label="Path">
@@ -13,6 +13,11 @@ export function Breadcrumbs({ trail, cards, onJump, onClear }: { trail: string[]
           </button>
         );
       })}
+      {onOpen && (
+        <button className="crumb-open" onClick={onOpen}>
+          read ▸
+        </button>
+      )}
       <button className="crumb-clear" onClick={onClear}>
         clear
       </button>

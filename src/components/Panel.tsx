@@ -46,7 +46,7 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
 }
 
 export function Panel({ deck, card, onClose }: { deck: Deck; card: Card | null; onClose(): void }) {
-  const resolver = useMemo(() => createResolver(deck.cards.map(({ id, layer, name, title }) => ({ id, layer, name, title }))), [deck]);
+  const resolver = useMemo(() => createResolver(deck.cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })), deck.meta.id), [deck]);
   const scroller = useRef<HTMLDivElement>(null);
   const { hovered } = useInteraction();
 
@@ -64,6 +64,12 @@ export function Panel({ deck, card, onClose }: { deck: Deck; card: Card | null; 
     () =>
       ({
         "ref-chip": Chip,
+        h1: ({ children }: ComponentProps<"h3">) => <h3 className="lv1">{children}</h3>,
+        h2: ({ children }: ComponentProps<"h4">) => <h4 className="lv2">{children}</h4>,
+        h3: ({ children }: ComponentProps<"h5">) => <h5 className="lv3">{children}</h5>,
+        h4: ({ children }: ComponentProps<"h6">) => <h6 className="lv4">{children}</h6>,
+        h5: ({ children }: ComponentProps<"h6">) => <h6 className="lv4">{children}</h6>,
+        h6: ({ children }: ComponentProps<"h6">) => <h6 className="lv4">{children}</h6>,
         pre: ({ children }: ComponentProps<"pre">) => <>{children}</>,
         code: ({ className, children }: ComponentProps<"code">) => {
           const text = String(children ?? "");
