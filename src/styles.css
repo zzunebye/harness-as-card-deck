@@ -175,7 +175,7 @@ pre.code code { font: 12.5px var(--mono); }
 .chip.hl { background: rgba(242,193,78,0.25); }
 
 @media (max-width: 1100px) {
-  .stage { grid-template-columns: minmax(0, 1fr); }
+  .stage { grid-template-columns: minmax(0, 1fr); overflow: hidden; }
   .resizer { display: none; }
   .world { transition: transform 0.25s ease; }
   .panel {
@@ -190,13 +190,15 @@ pre.code code { font: 12.5px var(--mono); }
 .source-select:focus-visible { outline: 2px solid var(--gold); }
 @media (max-width: 900px) {
   .topbar { height: auto; min-height: 60px; flex-wrap: wrap; padding: 8px 20px; gap: 8px 16px; }
+}
+@media (max-width: 1000px) {
   .source-tabs { display: none; }
   .source-select { display: block; }
 }
 @media (max-width: 640px) {
+  .edge-legend { flex-direction: column; gap: 4px; }
   .panel { width: 100%; }
   .topbar { padding: 8px 12px; gap: 8px; }
-  .edge-legend { flex-direction: column; gap: 4px; }
   .topbar h1 { flex-basis: 100%; font-size: clamp(16px, 4.6vw, 20px); }
   .source-select { padding: 0 26px 0 10px; background-position: right 9px center; }
   .lenses button { padding: 6px 9px; }
@@ -211,7 +213,7 @@ pre.code code { font: 12.5px var(--mono); }
 .gh-link { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font: 500 12px var(--mono); border: 1px solid #2a3a33; border-radius: 99px; padding: 6px 12px; transition: color 0.15s, border-color 0.15s; }
 .gh-link:hover, .gh-link:focus-visible { color: var(--cream); border-color: var(--gold); }
 .gh-stars { font-weight: 600; color: var(--gold); }
-@media (max-width: 640px) { .gh-link span, .gh-stars { display: none; } .gh-link { padding: 6px; } }
+@media (max-width: 1200px) { .gh-link span, .gh-stars { display: none; } .gh-link { padding: 6px; } }
 .topbar h1 .home { border: 0; background: transparent; padding: 0; font: inherit; }
 .lobby { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 24px 0; background: radial-gradient(ellipse at 40% 45%, var(--felt-1) 0%, var(--felt-2) 75%); }
 .lobby > :first-child { margin-top: auto; }
