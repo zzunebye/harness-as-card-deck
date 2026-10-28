@@ -197,8 +197,10 @@ pre.code code { font: 12.5px var(--mono); }
 }
 @media (max-width: 640px) {
   .panel { width: 100%; }
-  .topbar { padding: 8px 16px; }
-  .topbar h1 { font-size: clamp(16px, 4.6vw, 20px); }
+  .topbar { padding: 8px 12px; gap: 8px; }
+  .topbar h1 { flex-basis: 100%; font-size: clamp(16px, 4.6vw, 20px); }
+  .source-select { padding: 0 26px 0 10px; background-position: right 9px center; }
+  .lenses button { padding: 6px 9px; }
   .topbar h1 span { font-size: 0.8em; margin-right: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
