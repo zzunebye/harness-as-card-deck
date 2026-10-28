@@ -3,8 +3,10 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
 import { createResolver } from "../lib/refs.ts";
-import { remarkDropComments, remarkRefs } from "../lib/markdown.ts";
+import { extractHeadings, remarkDropComments, remarkRefs } from "../lib/markdown.ts";
 import { useBodies } from "../lib/bodies.ts";
+import { headingComponents } from "../lib/headingComponents.ts";
+import { Toc, tocHeadings } from "./Toc.tsx";
 import { useInteraction } from "../context.ts";
 import type { Phase } from "./Table.tsx";
 
@@ -74,6 +76,9 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
   const resolver = useMemo(() => createResolver(deck.cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })), deck.meta.id), [deck]);
   const scroller = useRef<HTMLDivElement>(null);
   const bodies = useBodies(deck.meta.id);
+  const body = card ? bodies?.[card.id] : undefined;
+  const headings = useMemo(() => (body ? extractHeadings(body) : []), [body]);
+  const toc = useMemo(() => tocHeadings(headings), [headings]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
@@ -83,12 +88,7 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
     () =>
       ({
         "ref-chip": Chip,
-        h1: ({ children }: ComponentProps<"h3">) => <h3 className="lv1">{children}</h3>,
-        h2: ({ children }: ComponentProps<"h4">) => <h4 className="lv2">{children}</h4>,
-        h3: ({ children }: ComponentProps<"h5">) => <h5 className="lv3">{children}</h5>,
-        h4: ({ children }: ComponentProps<"h6">) => <h6 className="lv4">{children}</h6>,
-        h5: ({ children }: ComponentProps<"h6">) => <h6 className="lv4">{children}</h6>,
-        h6: ({ children }: ComponentProps<"h6">) => <h6 className="lv4">{children}</h6>,
+        ...headingComponents(headings),
         pre: ({ children }: ComponentProps<"pre">) => <>{children}</>,
         code: ({ className, children }: ComponentProps<"code">) => {
           const text = String(children ?? "");
@@ -101,7 +101,7 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
           </a>
         ),
       }) as unknown as Components,
-    [],
+    [headings],
   );
 
   const remarkPlugins = useMemo(() => (card ? [remarkGfm, remarkDropComments, remarkRefs(resolver, card.id)] : [remarkGfm, remarkDropComments]), [resolver, card]);
@@ -168,11 +168,14 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
         </p>
       </div>
       {bodies ? (
-        <article className="md">
-          <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
-            {bodies[card.id]}
-          </ReactMarkdown>
-        </article>
+        <>
+          {toc.length >= 3 && <Toc key={card.id} headings={toc} scroller={scroller} />}
+          <article className="md">
+            <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+              {body}
+            </ReactMarkdown>
+          </article>
+        </>
       ) : (
         <p className="md md-loading" aria-busy="true">
           Loading {card.path}…
