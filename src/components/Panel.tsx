@@ -136,6 +136,14 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
             </div>
           ))}
         </dl>
+        <section className="about-after">
+          <h2>{deck.meta.label}</h2>
+          <article className="md about">
+            <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+              {deck.about}
+            </ReactMarkdown>
+          </article>
+        </section>
         <Attribution deck={deck} />
       </aside>
     );
