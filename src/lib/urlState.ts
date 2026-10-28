@@ -24,3 +24,11 @@ export function serializeUrlState(state: UrlState, defaults: Defaults): string {
   const query = params.toString();
   return query ? `?${query}` : "";
 }
+
+export type AnalyticsPage = { route: string; path: string };
+
+export function analyticsPage({ source, card }: { source: string | null; card: string | null }): AnalyticsPage {
+  if (!source) return { route: "/", path: "/" };
+  if (!card) return { route: "/[deck]", path: `/${source}` };
+  return { route: "/[deck]/[card]", path: `/${source}/${card.replace(":", "-")}` };
+}
