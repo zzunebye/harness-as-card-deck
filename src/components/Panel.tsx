@@ -19,11 +19,35 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
       live = false;
     };
   }, [code, lang]);
-  if (html) return <div className="code" dangerouslySetInnerHTML={{ __html: html }} />;
   return (
-    <pre className="code">
-      <code>{code}</code>
-    </pre>
+    <div className="code-wrap">
+      {html ? (
+        <div className="code" dangerouslySetInnerHTML={{ __html: html }} />
+      ) : (
+        <pre className="code">
+          <code>{code}</code>
+        </pre>
+      )}
+      <CopyButton text={code} />
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+  return (
+    <button
+      className={`copy${copied ? " done" : ""}`}
+      aria-label={copied ? "Copied" : "Copy code"}
+      onClick={() => navigator.clipboard.writeText(text).then(() => setCopied(true), () => {})}
+    >
+      {copied ? "Copied" : "Copy"}
+    </button>
   );
 }
 
@@ -35,7 +59,6 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
     <button
       type="button"
       className={`chip chip-${layer}${hovered === id ? " hl" : ""}`}
-      data-chip={id}
       onMouseEnter={() => setHovered(id)}
       onMouseLeave={() => setHovered(null)}
       onClick={() => select(id)}
@@ -49,17 +72,10 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
 export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase; card: Card | null; onClose(): void }) {
   const resolver = useMemo(() => createResolver(deck.cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })), deck.meta.id), [deck]);
   const scroller = useRef<HTMLDivElement>(null);
-  const { hovered } = useInteraction();
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
   }, [card?.id, deck.meta.id]);
-
-  useEffect(() => {
-    if (!hovered || !card) return;
-    const el = scroller.current?.querySelector(`[data-chip="${CSS.escape(hovered)}"]`);
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [hovered, card]);
 
   const components = useMemo<Components>(
     () =>

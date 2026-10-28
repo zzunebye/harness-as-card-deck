@@ -61,15 +61,29 @@ const pose = (x: number, y: number, z: number, extra: Partial<Pose> = {}): Pose 
 
 export const LAYER_COLUMN_X = (i: number) => (WORLD_W * (i + 0.5)) / LAYER_ORDER.length - CARD_W / 2;
 
+/** The stacked deck is drawn this much larger than a dealt card, so the one thing to click on the empty table reads as the call to action. */
+export const STACK_SCALE = 1.5;
+
+const MAX_PILE_LAYERS = 12;
+/** How many cards a pile of `cards` shows: about the square root, between 3 and 12. */
+export const pileLayers = (cards: number) => Math.min(MAX_PILE_LAYERS, Math.max(3, Math.ceil(Math.sqrt(cards))));
+
+/** Offset of visible layer `i` of `count`, in px of a 140px-wide card. Each layer below the top sinks 2px and drifts by a fixed pseudo-random offset, so the pile looks hand-stacked and renders the same every time. */
+export function pileOffset(i: number, count: number) {
+  const depth = count - 1 - i;
+  if (depth === 0) return { x: 0, y: 0, rotate: 0 };
+  return { x: Math.sin(i * 12.9) * 4.5, y: depth * 2 + Math.sin(i * 5.1) * 0.8, rotate: Math.sin(i * 7.3) * 3 };
+}
+
+/** The same pile as the lobby deck, scaled up and centered on the top card. */
 function stackLayout(cards: Card[]): Map<string, Pose> {
+  const count = pileLayers(cards.length);
+  const unit = (CARD_W * STACK_SCALE) / 140;
   return new Map(
-    cards.map((c, i) => [
-      c.id,
-      pose((WORLD_W - CARD_W) / 2 + (i % 3) * 0.6, (WORLD_H - CARD_H) / 2 - i * 0.35, i, {
-        rotate: ((i * 37) % 7) - 3,
-        faceDown: true,
-      }),
-    ]),
+    cards.map((c, i) => {
+      const o = pileOffset(Math.floor((i * count) / cards.length), count);
+      return [c.id, pose((WORLD_W - CARD_W) / 2 + o.x * unit, (WORLD_H - CARD_H) / 2 + o.y * unit, i, { rotate: o.rotate, scale: STACK_SCALE, faceDown: true })];
+    }),
   );
 }
 
@@ -289,6 +303,12 @@ export function focusLayout(
     faceDown: false,
   });
   return { poses, related, inflow };
+}
+
+/** The same poses pushed a full table width to one side: -1 is off the left edge, 1 off the right. */
+export function offstage(poses: Map<string, Pose>, side: -1 | 1): Map<string, Pose> {
+  const shift = side * (WORLD_W + CARD_W * STACK_SCALE);
+  return new Map([...poses].map(([id, p]) => [id, { ...p, x: p.x + shift, rotate: p.rotate + side * 8 }]));
 }
 
 export const cardCenter = (p: Pose) => ({ x: p.x + CARD_W / 2, y: p.y + CARD_H / 2 });

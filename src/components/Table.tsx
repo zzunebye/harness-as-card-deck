@@ -9,9 +9,11 @@ import {
   deckLayout,
   focusLayout,
   lensLayout,
+  offstage,
   LAYER_COLUMN_X,
   stageSlots,
   CARD_W,
+  STACK_SCALE,
   type Launch,
   type Lens,
   type Pose,
@@ -67,6 +69,10 @@ interface Props {
   onFlow: (update: (f: { in: boolean; out: boolean }) => { in: boolean; out: boolean }) => void;
   /** Where the deck sat in the lobby, when the Table opens from a pick. */
   launch: Launch | null;
+  /** The deck is being swapped out: its cards slide off to the left. */
+  leaving: boolean;
+  /** The deck replaces another: its pile slides in from the right. */
+  enter: boolean;
   onDeal(): void;
   onBackground(): void;
   /** Right-hand px covered by the overlay panel; the world fits into the rest. */
@@ -75,7 +81,7 @@ interface Props {
 
 const NO_FIT: Fit = { scale: 1, x: 0, y: 0 };
 
-export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDeal, onBackground, inset }: Props) {
+export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leaving, enter, onDeal, onBackground, inset }: Props) {
   const { hovered } = useInteraction();
   const wrap = useRef<HTMLDivElement>(null);
   const still = useReducedMotion();
@@ -109,19 +115,21 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
   // Each card starts as the stack pose moved and scaled so the pile sits where the lobby deck was.
   const starts = useMemo(() => {
     const box = wrap.current?.getBoundingClientRect();
-    if (!fit || !launch || !box || still) return null;
+    if (still) return null;
+    if (enter && !launch) return new Map([...offstage(stack, 1)].map(([id, p]) => [id, { x: p.x, y: p.y, rotate: p.rotate, scale: p.scale }]));
+    if (!fit || !launch || !box) return null;
     const cx = (launch.cx - box.left - fit.x) / fit.scale;
     const cy = (launch.cy - box.top - fit.y) / fit.scale;
-    const s = launch.w / (CARD_W * fit.scale);
     // The lobby shows the pile's top card, so that card anchors the move.
     const top = stack.get(deck.cards.at(-1)!.id)!;
+    const s = launch.w / (CARD_W * top.scale * fit.scale);
     return new Map(
       [...stack].map(([id, p]) => [
         id,
         { x: cx + (p.x - top.x) * s - CARD_W / 2, y: cy + (p.y - top.y) * s - CARD_H / 2, rotate: p.rotate, scale: p.scale * s },
       ]),
     );
-  }, [fit, launch, still, stack, deck]);
+  }, [fit, launch, enter, still, stack, deck]);
 
   const base = useMemo(() => lensLayout(deck.cards, lens, deck.stages), [deck, lens]);
 
@@ -135,7 +143,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
     [base, deck, edgesShown, selected, phase],
   );
 
-  const poses: Map<string, Pose> =
+  const placed: Map<string, Pose> =
     phase === "dealt"
       ? (focus?.poses ?? base)
       : new Map(
@@ -144,6 +152,8 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
             phase === "shuffling" ? { ...p, x: p.x + (Math.sin(p.z * 12.9) * 180), rotate: p.rotate + Math.sin(p.z * 7.3) * 25 } : p,
           ]),
         );
+
+  const poses = leaving ? offstage(placed, -1) : placed;
 
   // Keyboard model: one tab stop on the board, arrow keys move to the nearest card in that direction.
   const interactive = useMemo(
@@ -220,7 +230,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
     >
       {fit && (
       <div
-        className={`world${deckHot && phase === "stack" ? " deck-hot" : ""}`}
+        className={`world${phase !== "dealt" ? " stacked" : ""}${deckHot && phase === "stack" ? " deck-hot" : ""}`}
         style={{
           width: WORLD_W,
           height: WORLD_H,
@@ -230,7 +240,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
         }}
         onClick={(e) => e.target === e.currentTarget && onBackground()}
       >
-        {phase === "dealt" && lens === "layer" && !selected &&
+        {phase === "dealt" && !leaving && lens === "layer" && !selected &&
           LAYER_ORDER.map((layer, i) => deck.cards.some((c) => c.layer === layer) && (
             <div key={layer} className="pile-label" style={{ left: LAYER_COLUMN_X(i), width: CARD_W }}>
               <b style={{ color: layer === "playbook" ? "#ff8a80" : layer === "skill" ? "#8ab8ff" : layer === "principle" ? "#7be0ab" : layer === "agent" ? "#d0aaff" : "#e8e8ee" }}>
@@ -240,7 +250,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
             </div>
           ))}
 
-        {phase === "dealt" && lens === "sprint" && !selected &&
+        {phase === "dealt" && !leaving && lens === "sprint" && !selected &&
           (() => {
             let n = 0;
             return stageSlots(deck.stages ?? []).map(({ stage: st, labelX, y0 }) => (
@@ -251,14 +261,14 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
             ));
           })()}
 
-        {phase === "dealt" && lens === "tree" && !selected &&
+        {phase === "dealt" && !leaving && lens === "tree" && !selected &&
           (["router", "playbook", "skill", "principle"] as const).map((layer, i) => deck.cards.some((c) => c.layer === layer) && (
             <div key={layer} className="row-label" style={{ top: [20, 250, 480, 710][i] + CARD_H + 4 }}>
               {LAYER_INFO[layer].suit} {LAYER_INFO[layer].label}
             </div>
           ))}
 
-        <Edges edges={edges} />
+        <Edges edges={leaving ? [] : edges} />
 
         {deck.cards.map((card, i) => (
           <CardView
@@ -266,7 +276,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
             card={card}
             pose={poses.get(card.id)!}
             from={starts?.get(card.id)}
-            delay={phase === "dealt" && !selected ? i * 0.008 : phase === "dealt" ? 0.02 + (focus?.related.has(card.id) ? i * 0.004 : 0) : 0}
+            delay={leaving ? 0 : phase === "dealt" && !selected ? i * 0.008 : phase === "dealt" ? 0.02 + (focus?.related.has(card.id) ? i * 0.004 : 0) : 0}
             focused={card.id === selected}
             glow={hovered === card.id}
             tabbable={card.id === tabId}
@@ -275,18 +285,18 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, onDea
           />
         ))}
 
-        {phase !== "dealt" && (
+        {phase !== "dealt" && !leaving && (
           <button
             className="deck-cta"
             onClick={onDeal}
             {...hotProps}
             disabled={phase === "shuffling"}
-            style={{ left: WORLD_W / 2 - 160, top: WORLD_H / 2 + CARD_H / 2 + 50 }}
+            style={{ left: WORLD_W / 2 - 160, top: WORLD_H / 2 + (CARD_H * STACK_SCALE) / 2 + 60 }}
           >
             {phase === "stack" ? "Click the deck to deal" : "Shuffling…"}
           </button>
         )}
-        {phase === "stack" && <button className="deck-hit" aria-label="Deal the deck" onClick={onDeal} {...hotProps} style={{ left: (WORLD_W - CARD_W) / 2 - 20, top: (WORLD_H - CARD_H) / 2 - 20, width: CARD_W + 40, height: CARD_H + 40, zIndex: 999 }} />}
+        {phase === "stack" && !leaving && <button className="deck-hit" aria-label="Deal the deck" onClick={onDeal} {...hotProps} style={{ left: (WORLD_W - CARD_W * STACK_SCALE) / 2 - 20, top: (WORLD_H - CARD_H * STACK_SCALE) / 2 - 20, width: CARD_W * STACK_SCALE + 40, height: CARD_H * STACK_SCALE + 40, zIndex: 999 }} />}
       </div>
       )}
       {phase === "dealt" && (

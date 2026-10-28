@@ -27,6 +27,7 @@ function savePanelW(w: number) {
 
 const OVERLAY_MAX = 1100;
 const PHONE_MAX = 640;
+const SLIDE_MS = 450;
 
 function useViewportWidth() {
   const [w, setW] = useState(window.innerWidth);
@@ -52,6 +53,9 @@ export function App() {
   const [hovered, setHovered] = useState<string | null>(null);
   // Where the picked deck sat in the lobby. Only the Table that mounts for that pick starts from it.
   const [launch, setLaunch] = useState<Launch | null>(null);
+  // The outgoing deck's cards are sliding aside; the swap to the next deck lands when they are clear.
+  const [leaving, setLeaving] = useState(false);
+  const [enter, setEnter] = useState(false);
   const [flow, setFlow] = useState({ in: true, out: true });
   const [panelW, setPanelW] = useState(readPanelW);
 
@@ -78,22 +82,43 @@ export function App() {
   // The deck the URL last named. A change pushes a history entry so Back returns to the previous deck or the lobby.
   const urlSource = useRef<string | null>(initial?.source ?? null);
 
-  const switchSource = useCallback((id: string | null, from: Launch | null = null) => {
+  const swapTimer = useRef<number>(0);
+
+  const commitSource = useCallback((id: string | null, from: Launch | null, slideIn: boolean) => {
     clearTimeout(dealTimer.current);
+    clearTimeout(swapTimer.current);
     setHovered(null);
     setTrail([]);
     setPhase("stack");
     setLaunch(from);
+    setLeaving(false);
+    setEnter(slideIn);
     if (id) setLens(lensesFor(decks.find((d) => d.meta.id === id)!)[0].id);
     setSource(id);
   }, []);
+
+  const switchSource = useCallback(
+    (id: string | null, from: Launch | null = null) => {
+      if (source && id && id !== source && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        clearTimeout(dealTimer.current);
+        clearTimeout(swapTimer.current);
+        setHovered(null);
+        setTrail([]);
+        setLeaving(true);
+        swapTimer.current = window.setTimeout(() => commitSource(id, null, true), SLIDE_MS);
+        return;
+      }
+      commitSource(id, from, false);
+    },
+    [source, commitSource],
+  );
 
   const deal = useCallback(() => {
     setPhase("shuffling");
     dealTimer.current = window.setTimeout(() => setPhase("dealt"), 900);
   }, []);
 
-  useEffect(() => () => clearTimeout(dealTimer.current), []);
+  useEffect(() => () => (clearTimeout(dealTimer.current), clearTimeout(swapTimer.current)), []);
 
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
   useEffect(() => {
@@ -112,6 +137,9 @@ export function App() {
     const onPop = () => {
       const state = parseUrlState(location.search, decks);
       clearTimeout(dealTimer.current);
+      clearTimeout(swapTimer.current);
+      setLeaving(false);
+      setEnter(false);
       urlSource.current = state?.source ?? null;
       setHovered(null);
       setLaunch(null);
@@ -176,14 +204,16 @@ export function App() {
               ))}
             </div>
           )}
-          <ul className="edge-legend">
-            {(Object.keys(EDGE_INFO) as EdgeType[]).map((t) => (
-                <li key={t} title={edgeDefinition(t)}>
-                  <i style={{ background: EDGE_INFO[t].color }} />
-                  {EDGE_INFO[t].label}
-                </li>
-              ))}
-          </ul>
+          {deck && (
+            <ul className="edge-legend">
+              {(Object.keys(EDGE_INFO) as EdgeType[]).map((t) => (
+                  <li key={t} title={edgeDefinition(t)}>
+                    <i style={{ background: EDGE_INFO[t].color }} />
+                    {EDGE_INFO[t].label}
+                  </li>
+                ))}
+            </ul>
+          )}
         </header>
         {!deck ? (
           <Lobby decks={decks} onPick={switchSource} />
@@ -191,7 +221,7 @@ export function App() {
         <main className={`stage${overlay ? " overlay" : ""}${selected && panelOpen ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
-            <Table key={source} deck={deck} launch={launch} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} />
+            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} />
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label="Resize panel" onPointerDown={startResize} />
           <Panel deck={deck} phase={phase} card={selected ? cards.get(selected)! : null} onClose={dismiss} />
