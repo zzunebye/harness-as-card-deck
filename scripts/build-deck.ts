@@ -133,6 +133,32 @@ const SOURCES: Source[] = [
       return { cards, version: JSON.parse(read("package.json")).version };
     },
   },
+  {
+    id: "anthropic",
+    label: "anthropic skills",
+    repo: "anthropics/skills",
+    subdir: "",
+    license: "Apache-2.0",
+    collect(read, dir) {
+      const cards: RawCard[] = [];
+      for (const d of subdirs(dir, "skills")) {
+        const path = `skills/${d.name}/SKILL.md`;
+        if (!existsSync(join(dir, path))) continue;
+        const { data, body } = splitFrontmatter(read(path));
+        cards.push({
+          id: `skill:${d.name}`,
+          layer: "skill",
+          name: d.name,
+          title: heading(body) ?? d.name,
+          description: String(data.description ?? "").trim(),
+          path,
+          body,
+        });
+      }
+      // The upstream repo has no version file, so the pinned commit stands in for one.
+      return { cards, version: read("../anthropic.sha").trim().slice(0, 7) };
+    },
+  },
 ];
 
 function buildDeck(src: Source): { deck: Deck; bodies: Bodies } {
