@@ -8,6 +8,8 @@ import { useBodies } from "../lib/bodies.ts";
 import { headingComponents } from "../lib/headingComponents.ts";
 import { Toc, tocHeadings } from "./Toc.tsx";
 import { useInteraction } from "../context.ts";
+import { ReadingControls } from "./ReadingControls.tsx";
+import { loadPrefs, prefsStyle, savePrefs, type ReadingPrefs } from "../lib/readingPrefs.ts";
 import type { Phase } from "./Table.tsx";
 
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
@@ -79,6 +81,11 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
   const body = card ? bodies?.[card.id] : undefined;
   const headings = useMemo(() => (body ? extractHeadings(body) : []), [body]);
   const toc = useMemo(() => tocHeadings(headings), [headings]);
+  const [prefs, setPrefs] = useState(loadPrefs);
+  const changePrefs = (next: ReadingPrefs) => {
+    setPrefs(next);
+    savePrefs(next);
+  };
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
@@ -151,15 +158,18 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
 
   const info = LAYER_INFO[card.layer];
   return (
-    <aside className="panel" ref={scroller}>
+    <aside className="panel" ref={scroller} style={prefsStyle(prefs)}>
       <div className="panel-head">
         <span className={`badge badge-${card.layer}`}>
           {info.suit} {info.label}
         </span>
         <h2>{card.name}</h2>
-        <button className="close" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
+        <div className="head-actions">
+          <ReadingControls prefs={prefs} onChange={changePrefs} />
+          <button className="close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
         <a className="src" target="_blank" rel="noreferrer" href={`https://github.com/${deck.meta.repo}/blob/${deck.meta.sha}/${[deck.meta.subdir, card.path].filter(Boolean).join("/")}`}>
           {card.path}
         </a>
