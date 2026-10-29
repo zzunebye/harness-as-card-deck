@@ -195,7 +195,7 @@ export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck
       </div>
       {bodies && (lang === "en" || translations) ? (
         <>
-          {toc.length >= 3 && <Toc key={`${card.id}:${lang}`} headings={toc} scroller={scroller} />}
+          {toc.length >= 3 && <Toc key={`${card.id}:${lang}`} headings={toc} scroller={scroller} onClose={onClose} />}
           {translated !== undefined && (
             <div className="tr-banner" role="note" lang={lang}>
               <p>{ui.banner}</p>

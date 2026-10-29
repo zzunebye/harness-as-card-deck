@@ -9,10 +9,12 @@ export const tocHeadings = (headings: Heading[]) => headings.filter((h) => h.dep
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function Toc({ headings, scroller }: { headings: Heading[]; scroller: RefObject<HTMLElement | null> }) {
+export function Toc({ headings, scroller, onClose }: { headings: Heading[]; scroller: RefObject<HTMLElement | null>; onClose(): void }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState(0);
+  // Pinned to the top of the panel, i.e. the header and its close button have scrolled away.
+  const [stuck, setStuck] = useState(false);
   const bar = useRef<HTMLButtonElement>(null);
   const nav = useRef<HTMLElement>(null);
   const listId = useId();
@@ -23,7 +25,9 @@ export function Toc({ headings, scroller }: { headings: Heading[]; scroller: Ref
     let frame = 0;
     const update = () => {
       frame = 0;
-      const limit = root.getBoundingClientRect().top + (bar.current?.offsetHeight ?? 0) + SPY_MARGIN;
+      const rootTop = root.getBoundingClientRect().top;
+      setStuck((nav.current?.getBoundingClientRect().top ?? Infinity) <= rootTop + 1);
+      const limit = rootTop + (bar.current?.offsetHeight ?? 0) + SPY_MARGIN;
       let at = 0;
       headings.forEach((h, i) => {
         const el = document.getElementById(headingDomId(h.id));
@@ -74,15 +78,22 @@ export function Toc({ headings, scroller }: { headings: Heading[]; scroller: Ref
         bar.current?.focus({ preventScroll: true });
       }}
     >
-      <button ref={bar} type="button" className="toc-bar" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((o) => !o)}>
-        <span className="toc-caret" aria-hidden="true">
-          {open ? "▴" : "▾"}
-        </span>
-        <span className="toc-title">{headings[current].text}</span>
-        <span className="toc-pos">
-          {current + 1}/{headings.length}
-        </span>
-      </button>
+      <div className="toc-row">
+        {stuck && (
+          <button type="button" className="close toc-close" onClick={onClose} aria-label={t.panel.close}>
+            ✕
+          </button>
+        )}
+        <button ref={bar} type="button" className="toc-bar" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((o) => !o)}>
+          <span className="toc-caret" aria-hidden="true">
+            {open ? "▴" : "▾"}
+          </span>
+          <span className="toc-title">{headings[current].text}</span>
+          <span className="toc-pos">
+            {current + 1}/{headings.length}
+          </span>
+        </button>
+      </div>
       {open && (
         <ul id={listId} className="toc-list">
           {headings.map((h, i) => (
