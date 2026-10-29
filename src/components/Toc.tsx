@@ -79,11 +79,6 @@ export function Toc({ headings, scroller, onClose }: { headings: Heading[]; scro
       }}
     >
       <div className="toc-row">
-        {stuck && (
-          <button type="button" className="close toc-close" onClick={onClose} aria-label={t.panel.close}>
-            ✕
-          </button>
-        )}
         <button ref={bar} type="button" className="toc-bar" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((o) => !o)}>
           <span className="toc-caret" aria-hidden="true">
             {open ? "▴" : "▾"}
@@ -93,6 +88,11 @@ export function Toc({ headings, scroller, onClose }: { headings: Heading[]; scro
             {current + 1}/{headings.length}
           </span>
         </button>
+        {stuck && (
+          <button type="button" className="close toc-close" onClick={onClose} aria-label={t.panel.close}>
+            ✕
+          </button>
+        )}
       </div>
       {open && (
         <ul id={listId} className="toc-list">
