@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { CARD_H, CARD_W, LAYER_COLUMN_X, TITLE, WORLD_FRAME, WORLD_H, WORLD_W, arrange, fitFrame, lensLayout, phoneLayerLayout, phoneSprintLayout, phoneSprintPlans } from "../src/lib/layout.ts";
+import { CARD_H, CARD_W, LAYER_COLUMN_X, STACK_CTA, STACK_SCALE, TITLE, WORLD_FRAME, WORLD_H, WORLD_W, arrange, fitFrame, lensLayout, pileArrangement, pileLayers, pileOffset, phoneLayerLayout, phoneSprintLayout, phoneSprintPlans, titleLineCount } from "../src/lib/layout.ts";
 import { LAYER_ORDER, type Card, type Layer, type Stage } from "../src/types.ts";
 
 const deck = (counts: Partial<Record<Layer, number>>): Card[] =>
@@ -156,5 +156,84 @@ test("cards of different columns or rows never share a spot", () => {
     const key = `${p.x}|${p.y}`;
     assert.ok(!seen.has(key));
     seen.add(key);
+  }
+});
+
+test("without a phone board the pile keeps the fixed world frame and the original poses", () => {
+  const a = pileArrangement(pstack);
+  assert.equal(a.frame, WORLD_FRAME);
+  const n = pileLayers(pstack.length);
+  const unit = (CARD_W * STACK_SCALE) / 140;
+  pstack.forEach((c, i) => {
+    const o = pileOffset(Math.floor((i * n) / pstack.length), n);
+    assert.deepEqual(a.poses.get(c.id), { x: (WORLD_W - CARD_W) / 2 + o.x * unit, y: (WORLD_H - CARD_H) / 2 + o.y * unit, rotate: o.rotate, scale: STACK_SCALE, z: i, dim: false, muted: false, faceDown: true });
+  });
+});
+
+test("on a phone board the pile spans 40 percent of the width, fills the board's aspect, and keeps the call to action in view", () => {
+  for (const board of [{ w: 412, h: 800 }, { w: 390, h: 744 }, { w: 360, h: 640 }]) {
+    const a = pileArrangement(pstack, board);
+    const scale = fitFrame(a.frame, board).scale;
+    assert.ok(Math.abs(a.frame.w / a.frame.h - board.w / board.h) < 1e-9);
+    assert.deepEqual(a.poses, pileArrangement(pstack).poses);
+    const xs = [...a.poses.values()].map((p) => p.x + CARD_W / 2);
+    const half = (CARD_W * STACK_SCALE) / 2;
+    assert.ok(Math.abs((Math.max(...xs) - Math.min(...xs) + 2 * half) * scale / board.w - 0.4) < 0.05);
+    const ctaTop = WORLD_H / 2 + (CARD_H * STACK_SCALE) / 2 + STACK_CTA.gap;
+    assert.ok(ctaTop + STACK_CTA.h <= a.frame.y + a.frame.h);
+    assert.ok((ctaTop - a.frame.y) * scale > 0 && STACK_CTA.h * scale >= 44 && 24 * scale >= 13);
+  }
+});
+
+test("a short phone board shrinks the pile until pile and call to action fit its height", () => {
+  const board = { w: 640, h: 300 };
+  const a = pileArrangement(pstack, board);
+  assert.ok(fitFrame(a.frame, board).scale < (0.4 * board.w) / 250);
+  assert.ok(WORLD_H / 2 + (CARD_H * STACK_SCALE) / 2 + STACK_CTA.gap + STACK_CTA.h <= a.frame.y + a.frame.h + 1e-9);
+});
+
+test("a title wraps after hyphens and spaces, breaks an over-long word, and grows with its text", () => {
+  assert.equal(titleLineCount("claude-api"), 1);
+  assert.equal(titleLineCount("web-artifacts-builder"), 2);
+  assert.equal(titleLineCount("verification-before-completion"), 3);
+  assert.equal(titleLineCount("supercalifragilisticexpialidocious"), 3);
+  assert.equal(titleLineCount("a b a b a b a b a b a b a b a b a b a b a b a b a b"), 3);
+  assert.ok(titleLineCount("verification-before-completion", 400) < titleLineCount("verification-before-completion"));
+});
+
+const titled = (lines: number[]) => {
+  const cards = lines.map((_, i) => ({ id: `skill:${i}`, layer: "skill" as Layer, name: `n${String(i).padStart(2, "0")}`, title: "", description: "", path: "", out: 0, in: 0 }));
+  return { cards, titles: new Map(lines.map((n, i) => [`skill:${i}`, n])) };
+};
+
+test("each stacked card's strip holds exactly the lines its own title needs, and the last card keeps its full height", () => {
+  const { cards, titles } = titled([1, 3, 2, 1, 3, 1]);
+  const a = phoneLayerLayout(cards, { w: 390, h: 744 }, titles);
+  const ys = cards.map((c) => a.poses.get(c.id)!.y);
+  cards.slice(0, -1).forEach((c, i) => assert.ok(ys[i + 1] - ys[i] >= TITLE.pad + titles.get(c.id)! * TITLE.px * TITLE.lead - 1e-9));
+  assert.deepEqual(cards.map((c) => a.lines.get(c.id)), [1, 3, 2, 1, 3, 1]);
+  assert.ok(ys.at(-1)! + CARD_H <= a.frame.h + 1e-9);
+});
+
+test("a tall single column is limited by height, and taller titles shrink it", () => {
+  const board = { w: 390, h: 744 };
+  const one = titled(Array(33).fill(1));
+  const mixed = titled(Array.from({ length: 33 }, (_, i) => (i % 3) + 1));
+  const s = (t: ReturnType<typeof titled>) => fitFrame(phoneLayerLayout(t.cards, board, t.titles).frame, board).scale;
+  assert.ok(s(mixed) < s(one));
+  assert.ok(Math.abs(s(mixed) - board.h / (64 + CARD_H + 8 + [...mixed.titles.values()].slice(0, -1).reduce((h, n) => h + TITLE.pad + n * TITLE.px * TITLE.lead, 0))) < 1e-9);
+});
+
+test("the phone Sprint spaces each stacked card by its own title lines and fits the frame", () => {
+  const { cards, stages } = sprint([8, 8]);
+  const titles = new Map(cards.map((c, i) => [c.id, (i % 3) + 1]));
+  for (const board of phones) {
+    const a = phoneSprintLayout(stages, board, titles);
+    for (const s of a.slots) for (const [i, id] of s.stage.cards.entries()) {
+      const p = a.poses.get(id)!;
+      assert.ok(p.y + CARD_H <= a.frame.y + a.frame.h + 1e-9);
+      const next = s.stage.cards[i + 1] && a.poses.get(s.stage.cards[i + 1])!;
+      if (next && next.x === p.x) assert.ok(next.y - p.y >= TITLE.pad + titles.get(id)! * TITLE.px * TITLE.lead - 1e-9);
+    }
   }
 });

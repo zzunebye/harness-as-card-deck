@@ -289,13 +289,14 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   }, [deck]);
   const ctx = useMemo(() => ({ hovered, setHovered, select }), [hovered, select]);
   const tabs = deck !== null && phase === "dealt";
+  const reading = !!selected && panelOpen;
   const page = analyticsPage({ source, card: selected });
 
   return (
     <InteractionContext.Provider value={ctx}>
       {/* The outgoing deck drops its card before it slides away, and that in-between view is not one the visitor chose. */}
       <Analytics route={leaving ? undefined : page.route} path={page.path} beforeSend={keepCampaign} />
-      <div className={`app${tabs ? " tabs" : ""}`}>
+      <div className={`app${tabs ? " tabs" : ""}${reading ? " reading" : ""}`}>
         <header className={`topbar${deck ? " with-deck" : ""}`}>
           <h1>
             <button className="home" onClick={() => switchSource(null)} aria-label={t.topbar.allDecks}>
@@ -320,7 +321,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
           )}
           {deck && !leaving && (
             <>
-              <button className="icon-btn search-btn" aria-label={t.topbar.openSearch} onClick={() => setPopover("search")}>
+              <button className="icon-btn search-btn" aria-label={t.topbar.openSearch} aria-expanded={popover === "search"} onClick={() => setPopover("search")}>
                 <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></svg>
               </button>
               <Search key={deck.meta.id} deck={deck} onPick={searchPick} expanded={popover === "search"} onClose={() => setPopover(null)} />
@@ -347,7 +348,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         {!deck ? (
           <Lobby decks={decks} onPick={switchSource} />
         ) : (
-        <main className={`stage${overlay ? " overlay" : ""}${selected && panelOpen ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
+        <main className={`stage${overlay ? " overlay" : ""}${reading ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />

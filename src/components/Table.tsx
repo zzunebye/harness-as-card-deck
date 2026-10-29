@@ -8,7 +8,8 @@ import {
   cardCenter,
   WORLD_FRAME,
   arrange,
-  deckLayout,
+  pileArrangement,
+  STACK_CTA,
   fitFrame,
   focusLayout,
   offstage,
@@ -114,7 +115,8 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
     return () => ro.disconnect();
   }, [inset]);
 
-  const stack = useMemo(() => deckLayout(deck.cards), [deck]);
+  const pile = useMemo(() => pileArrangement(deck.cards, fast ? (board ?? undefined) : undefined), [deck, fast, board]);
+  const stack = pile.poses;
   const arrangement = useMemo(() => arrange(deck.cards, lens, deck.stages, fast ? (board ?? undefined) : undefined), [deck, lens, fast, board]);
   const base = arrangement.poses;
 
@@ -129,7 +131,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
   );
 
   const settled = phase === "dealt" && !focus ? arrangement : null;
-  const fit = useMemo(() => (board ? fitFrame(settled?.frame ?? WORLD_FRAME, board) : null), [board, settled?.frame]);
+  const fit = useMemo(() => (board ? fitFrame(settled?.frame ?? (phase === "dealt" ? WORLD_FRAME : pile.frame), board) : null), [board, settled?.frame, phase, pile.frame]);
   const { view, live, panning, zoomBy, reset, reveal, bind } = usePanZoom(wrap, fit ?? NO_FIT, inset, `${lens}|${selected}|${phase}`);
 
   // Each card starts as the stack pose moved and scaled so the pile sits where the lobby deck was.
@@ -301,7 +303,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
             onClick={onDeal}
             {...hotProps}
             disabled={phase === "shuffling"}
-            style={{ left: WORLD_W / 2 - 160, top: WORLD_H / 2 + (CARD_H * STACK_SCALE) / 2 + 60 }}
+            style={{ left: (WORLD_W - STACK_CTA.w) / 2, top: WORLD_H / 2 + (CARD_H * STACK_SCALE) / 2 + STACK_CTA.gap }}
           >
             {phase === "stack" ? t.table.dealHint : t.table.shuffling}
           </button>
