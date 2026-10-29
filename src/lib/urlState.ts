@@ -28,6 +28,13 @@ export function serializeUrlState(state: UrlState, defaults: Defaults): string {
   return query ? `?${query}` : "";
 }
 
+// The trail a history entry carries, trusted only while it still matches the URL's card and the deck's cards.
+export function trailFor(historyState: unknown, urlCard: string | null, deck: Deck): string[] {
+  const trail = (historyState as { trail?: unknown } | null)?.trail;
+  if (Array.isArray(trail) && trail.every((id) => typeof id === "string" && deck.cards.some((c) => c.id === id)) && (trail.at(-1) ?? null) === urlCard) return trail;
+  return urlCard ? [urlCard] : [];
+}
+
 export type AnalyticsPage = { route: string; path: string };
 
 export function analyticsPage({ source, card }: { source: string | null; card: string | null }): AnalyticsPage {

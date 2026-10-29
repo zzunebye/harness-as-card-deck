@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { analyticsPage, parseUrlState, serializeUrlState } from "../src/lib/urlState.ts";
+import { analyticsPage, parseUrlState, serializeUrlState, trailFor } from "../src/lib/urlState.ts";
 import type { Deck } from "../src/types.ts";
 
 const deck = (id: string, cards: string[], stages?: unknown, langs: string[] = []) => ({ meta: { id, langs }, cards: cards.map((c) => ({ id: c })), stages }) as unknown as Deck;
@@ -61,4 +61,27 @@ test("an open deck is an analytics page under its id", () => {
 
 test("a selected card is an analytics page under its deck, with the id's colon made a hyphen", () => {
   assert.deepEqual(analyticsPage({ source: "pstack", card: "principle:prove-it-works" }), { route: "/[deck]/[card]", path: "/pstack/principle-prove-it-works" });
+});
+
+test("a history entry's trail is kept when it ends at the URL's card", () => {
+  const two = deck("pstack", ["skill:how", "skill:why"]);
+  assert.deepEqual(trailFor({ trail: ["skill:how", "skill:why"] }, "skill:why", two), ["skill:how", "skill:why"]);
+  assert.deepEqual(trailFor({ trail: [] }, null, two), []);
+});
+
+test("a trail naming a card the deck lacks falls back to the URL's card", () => {
+  assert.deepEqual(trailFor({ trail: ["skill:gone", "skill:how"] }, "skill:how", decks[0]), ["skill:how"]);
+});
+
+test("a trail that does not end at the URL's card falls back to the URL's card", () => {
+  const two = deck("pstack", ["skill:how", "skill:why"]);
+  assert.deepEqual(trailFor({ trail: ["skill:how", "skill:why"] }, "skill:how", two), ["skill:how"]);
+  assert.deepEqual(trailFor({ trail: ["skill:how"] }, null, two), []);
+});
+
+test("a history state without a trail array falls back to the URL's card", () => {
+  assert.deepEqual(trailFor({ trail: "skill:how" }, "skill:how", decks[0]), ["skill:how"]);
+  assert.deepEqual(trailFor({ trail: [1] }, null, decks[0]), []);
+  assert.deepEqual(trailFor(null, "skill:how", decks[0]), ["skill:how"]);
+  assert.deepEqual(trailFor(undefined, null, decks[0]), []);
 });
