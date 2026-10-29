@@ -259,6 +259,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
       const sameDeck = (state?.source ?? null) === urlSource.current;
       if (sameDeck) {
         clearTimeout(panelTimer.current);
+        clearTimeout(swapTimer.current);
+        setLeaving(false);
         setHovered(null);
         setTrail(nextTrail);
         setPanelOpen(nextTrail.length > 0);
