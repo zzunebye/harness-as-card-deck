@@ -4,7 +4,7 @@ import repo from "./data/repo.json";
 import { EDGE_INFO, edgeDefinition, type Deck, type EdgeType } from "./types.ts";
 import { lensesFor, type Launch, type Lens } from "./lib/layout.ts";
 import { Analytics, type BeforeSend } from "@vercel/analytics/react";
-import { analyticsPage, parseUrlState, serializeUrlState } from "./lib/urlState.ts";
+import { analyticsPage, parseUrlState, serializeUrlState, trailFor } from "./lib/urlState.ts";
 import { loadBodies } from "./lib/bodies.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
@@ -68,6 +68,8 @@ function useViewportWidth() {
 const skipsIntro = (search: string, state: ReturnType<typeof parseUrlState>) => state !== null && (state.card !== null || new URLSearchParams(search).has("lens"));
 
 const initial = parseUrlState(location.search, decks);
+const initialDeck = decks.find((d) => d.meta.id === initial?.source);
+const initialTrail = initialDeck ? trailFor(history.state, initial?.card ?? null, initialDeck) : [];
 
 // Campaign tags from the landing URL ride along on every URL rewrite, so analytics still sees where the visit came from.
 const campaign = [...new URLSearchParams(location.search)].filter(([k]) => k.startsWith("utm_"));
@@ -103,7 +105,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const [lens, setLens] = useState<Lens>(initial?.lens ?? lensesFor(decks[0])[0].id);
   // null is the lobby, where every deck sits as its own stack until one is picked.
   const [source, setSource] = useState<string | null>(initial?.source ?? null);
-  const [trail, setTrail] = useState<string[]>(initial?.card ? [initial.card] : []);
+  const [trail, setTrail] = useState<string[]>(initialTrail);
   const [hovered, setHovered] = useState<string | null>(null);
   // Where the picked deck sat in the lobby. Only the Table that mounts for that pick starts from it.
   const [launch, setLaunch] = useState<Launch | null>(null);
@@ -217,22 +219,50 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     [phase, deal, select],
   );
 
+  const trailKey = useRef(initialTrail.join("|"));
+
+  // A deep link would otherwise be the only entry, so Back leaves the site. Put the deck's board behind it.
+  useEffect(() => {
+    if (!initial?.card || window.innerWidth > OVERLAY_MAX || history.state?.trail !== undefined) return;
+    const base = serializeUrlState({ ...initial, card: null, lang: choice }, { source: null, lens: null });
+    history.replaceState({ trail: [] }, "", location.pathname + withCampaign(base));
+    history.pushState({ trail: initialTrail }, "", location.href);
+  }, []);
+
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
   useEffect(() => {
     const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected, lang: choice }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
     const id = deck?.meta.id ?? null;
     const url = location.pathname + withCampaign(search);
+    const key = trail.join("|");
+    const trailChanged = key !== trailKey.current;
+    trailKey.current = key;
+    // Overlay widths push per trail step so Back peels cards off the panel. The trail is cleared before a deck swap, so a leaving deck must not push.
     if (id !== urlSource.current) {
       urlSource.current = id;
-      history.pushState(null, "", url);
+      history.pushState({ trail }, "", url);
+    } else if (trailChanged && overlay && !leaving) {
+      history.pushState({ trail }, "", url);
     } else {
-      history.replaceState(null, "", url);
+      history.replaceState({ trail }, "", url);
     }
-  }, [lens, selected, phase, deck, choice]);
+  }, [lens, selected, phase, deck, choice, trail, leaving, overlay]);
 
   useEffect(() => {
     const onPop = () => {
       const state = parseUrlState(location.search, decks);
+      const next = decks.find((d) => d.meta.id === state?.source);
+      const nextTrail = next ? trailFor(history.state, state?.card ?? null, next) : [];
+      trailKey.current = nextTrail.join("|");
+      // Lens is a view preference and old entries hold stale values, so stepping within a deck leaves lens and phase alone.
+      const sameDeck = (state?.source ?? null) === urlSource.current;
+      if (sameDeck) {
+        clearTimeout(panelTimer.current);
+        setHovered(null);
+        setTrail(nextTrail);
+        setPanelOpen(nextTrail.length > 0);
+        return;
+      }
       clearTimeout(dealTimer.current);
       clearTimeout(swapTimer.current);
       setLeaving(false);
@@ -242,7 +272,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
       setLaunch(null);
       setSource(state?.source ?? null);
       setLens(state?.lens ?? lensesFor(decks[0])[0].id);
-      setTrail(state?.card ? [state.card] : []);
+      setTrail(nextTrail);
+      if (nextTrail.length > 0) setPanelOpen(true);
       setPhase(skipsIntro(location.search, state) ? "dealt" : "stack");
     };
     window.addEventListener("popstate", onPop);
