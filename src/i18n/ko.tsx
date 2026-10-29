@@ -14,7 +14,7 @@ const ko: Messages = {
     legend: "연결선 범례",
   },
   layers: { router: "라우터", playbook: "플레이북", skill: "스킬", principle: "원칙", agent: "에이전트" },
-  lenses: { layer: "레이어", tree: "라우트 트리", sprint: "스프린트", scatter: "산점도" },
+  lenses: { layer: "레이어", tree: "라우트 트리", sprint: "단계별", scatter: "흩뿌리기" },
   lobby: {
     pickDeck: "덱을 고르세요!",
     cardCount: (n) => `카드 ${n}장`,
