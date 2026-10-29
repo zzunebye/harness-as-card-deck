@@ -6,14 +6,15 @@ import {
   WORLD_H,
   WORLD_W,
   cardCenter,
+  WORLD_FRAME,
+  arrange,
   deckLayout,
+  fitFrame,
   focusLayout,
-  lensLayout,
   offstage,
-  LAYER_COLUMN_X,
-  stageSlots,
   CARD_W,
   STACK_SCALE,
+  type Board,
   type Launch,
   type Lens,
   type Pose,
@@ -91,7 +92,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
   const wrap = useRef<HTMLDivElement>(null);
   const still = useReducedMotion();
   // Null until measured. The world mounts after that, so its first paint is already fitted and cards can start from true world coordinates.
-  const [fit, setFit] = useState<Fit | null>(null);
+  const [board, setBoard] = useState<Board | null>(null);
   const [deckHot, setDeckHot] = useState(false);
   const hotProps = {
     onMouseEnter: () => setDeckHot(true),
@@ -104,9 +105,8 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
     const el = wrap.current;
     if (!el) return;
     const measure = () => {
-      const w = Math.max(el.clientWidth - inset, 0);
-      const scale = Math.min(w / WORLD_W, el.clientHeight / WORLD_H);
-      setFit({ scale, x: (w - WORLD_W * scale) / 2, y: (el.clientHeight - WORLD_H * scale) / 2 });
+      const next = { w: Math.max(el.clientWidth - inset, 0), h: el.clientHeight };
+      setBoard((b) => (b && b.w === next.w && b.h === next.h ? b : next));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -114,9 +114,24 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
     return () => ro.disconnect();
   }, [inset]);
 
+  const stack = useMemo(() => deckLayout(deck.cards), [deck]);
+  const arrangement = useMemo(() => arrange(deck.cards, lens, deck.stages, fast ? (board ?? undefined) : undefined), [deck, lens, fast, board]);
+  const base = arrangement.poses;
+
+  const edgesShown = useMemo(
+    () => deck.edges.filter((e) => (e.from === selected && flow.out) || (e.to === selected && flow.in)),
+    [deck.edges, selected, flow],
+  );
+
+  const focus = useMemo(
+    () => (selected && phase === "dealt" ? focusLayout(base, deck.cards, edgesShown, selected) : null),
+    [base, deck, edgesShown, selected, phase],
+  );
+
+  const settled = phase === "dealt" && !focus ? arrangement : null;
+  const fit = useMemo(() => (board ? fitFrame(settled?.frame ?? WORLD_FRAME, board) : null), [board, settled?.frame]);
   const { view, live, panning, zoomBy, reset, reveal, bind } = usePanZoom(wrap, fit ?? NO_FIT, inset, `${lens}|${selected}|${phase}`);
 
-  const stack = useMemo(() => deckLayout(deck.cards), [deck]);
   // Each card starts as the stack pose moved and scaled so the pile sits where the lobby deck was.
   const starts = useMemo(() => {
     const box = wrap.current?.getBoundingClientRect();
@@ -135,18 +150,6 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
       ]),
     );
   }, [fit, launch, enter, still, stack, deck]);
-
-  const base = useMemo(() => lensLayout(deck.cards, lens, deck.stages), [deck, lens]);
-
-  const edgesShown = useMemo(
-    () => deck.edges.filter((e) => (e.from === selected && flow.out) || (e.to === selected && flow.in)),
-    [deck.edges, selected, flow],
-  );
-
-  const focus = useMemo(
-    () => (selected && phase === "dealt" ? focusLayout(base, deck.cards, edgesShown, selected) : null),
-    [base, deck, edgesShown, selected, phase],
-  );
 
   const placed: Map<string, Pose> =
     phase === "dealt"
@@ -235,7 +238,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
     >
       {fit && (
       <div
-        className={`world${phase !== "dealt" ? " stacked" : ""}${deckHot && phase === "stack" ? " deck-hot" : ""}`}
+        className={`world${settled?.compact ? " compact" : ""}${phase !== "dealt" ? " stacked" : ""}${deckHot && phase === "stack" ? " deck-hot" : ""}`}
         style={{
           width: WORLD_W,
           height: WORLD_H,
@@ -246,8 +249,8 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
         onClick={(e) => e.target === e.currentTarget && onBackground()}
       >
         {phase === "dealt" && !leaving && lens === "layer" && !selected &&
-          LAYER_ORDER.map((layer, i) => deck.cards.some((c) => c.layer === layer) && (
-            <div key={layer} className="pile-label" style={{ left: LAYER_COLUMN_X(i), width: CARD_W }}>
+          LAYER_ORDER.map((layer) => arrangement.columns[layer] && deck.cards.some((c) => c.layer === layer) && (
+            <div key={layer} className="pile-label" style={{ left: arrangement.columns[layer].x, width: CARD_W }}>
               <b style={{ color: layer === "playbook" ? "#ff8a80" : layer === "skill" ? "#8ab8ff" : layer === "principle" ? "#7be0ab" : layer === "agent" ? "#d0aaff" : "#e8e8ee" }}>
                 {LAYER_INFO[layer].suit}
               </b>
@@ -258,8 +261,8 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
         {phase === "dealt" && !leaving && lens === "sprint" && !selected &&
           (() => {
             let n = 0;
-            return stageSlots(deck.stages ?? []).map(({ stage: st, labelX, y0 }) => (
-              <div key={st.id} className="pile-label" style={{ left: labelX, top: y0 + 40, width: CARD_W }}>
+            return arrangement.slots.map(({ stage: st, labelX, labelY }) => (
+              <div key={st.id} className="pile-label" style={{ left: labelX, top: labelY, width: CARD_W }}>
                 <b style={{ color: st.utility ? "#9fb3aa" : "#8ab8ff" }}>{st.utility ? "·" : ++n}</b>
                 {st.label}
               </div>
@@ -279,6 +282,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
           <CardView
             key={card.id}
             card={card}
+            lines={settled?.lines.get(card.id)}
             pose={poses.get(card.id)!}
             from={starts?.get(card.id)}
             delay={leaving ? 0 : phase === "dealt" && !selected ? i * 0.008 : phase === "dealt" ? 0.02 + (focus?.related.has(card.id) ? i * 0.004 : 0) : 0}

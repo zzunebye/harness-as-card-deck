@@ -59,6 +59,24 @@ const pose = (x: number, y: number, z: number, extra: Partial<Pose> = {}): Pose 
   ...extra,
 });
 
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+export interface Board {
+  w: number;
+  h: number;
+}
+export const WORLD_FRAME: Rect = { x: 0, y: 0, w: WORLD_W, h: WORLD_H };
+
+/** Scale and offset that centre `frame` in a board, as much of it as fits. */
+export function fitFrame(frame: Rect, board: Board) {
+  const scale = Math.min(board.w / frame.w, board.h / frame.h);
+  return { scale, x: (board.w - frame.w * scale) / 2 - frame.x * scale, y: (board.h - frame.h * scale) / 2 - frame.y * scale };
+}
+
 export const LAYER_COLUMN_X = (i: number) => (WORLD_W * (i + 0.5)) / LAYER_ORDER.length - CARD_W / 2;
 
 /** The stacked deck is drawn this much larger than a dealt card, so the one thing to click on the empty table reads as the call to action. */
@@ -98,6 +116,149 @@ function layerLayout(cards: Card[]): Map<string, Pose> {
   return out;
 }
 
+/** The phone card face is its title alone, set in this type so a stacked card's strip stays readable at the width of five columns. */
+export const TITLE = { px: 16, lead: 1.1, pad: 5 };
+const titleStrip = (lines: number) => TITLE.pad + lines * TITLE.px * TITLE.lead;
+const MAX_TITLE_LINES = 2;
+const PHONE = { gap: 6, edge: 6, top: 64, bottom: 8, stepCap: 34 * CARD_SCALE };
+
+export interface Column {
+  x: number;
+}
+
+export interface StageSlot {
+  stage: Stage;
+  xs: number[];
+  y0: number;
+  height: number;
+  labelX: number;
+  labelY: number;
+}
+
+export interface Arrangement {
+  poses: Map<string, Pose>;
+  /** The part of the world that fills the board. */
+  frame: Rect;
+  columns: Partial<Record<Layer, Column>>;
+  slots: StageSlot[];
+  /** Cards listed here show only their title, in at most this many lines. */
+  lines: Map<string, number>;
+  /** Cards show only their titles, so the board needs the phone label and face styles. */
+  compact: boolean;
+}
+
+const titleLines = (step: number) => Math.max(1, Math.min(MAX_TITLE_LINES, Math.floor((step - TITLE.pad) / (TITLE.px * TITLE.lead))));
+
+/**
+ * Layer lens for a portrait board: only the occupied layers, columns one card apart, and a frame with the board's aspect.
+ * Width sets the scale until the tallest pile cannot keep a one-line title strip per card; the spare height becomes step.
+ */
+export function phoneLayerLayout(cards: Card[], board: Board): Arrangement {
+  const groups = byLayer(cards);
+  const layers = LAYER_ORDER.filter((l) => groups[l].length);
+  const pitch = CARD_W + PHONE.gap;
+  const contentW = (layers.length - 1) * pitch + CARD_W + 2 * PHONE.edge;
+  const tallest = Math.max(1, ...layers.map((l) => groups[l].length));
+  const scale = Math.min(board.w / contentW, board.h / (PHONE.top + CARD_H + PHONE.bottom + (tallest - 1) * titleStrip(1)));
+  const frame = { x: (contentW - board.w / scale) / 2, y: 0, w: board.w / scale, h: board.h / scale };
+  const room = frame.h - PHONE.top - CARD_H - PHONE.bottom;
+  const poses = new Map<string, Pose>();
+  const columns: Arrangement["columns"] = {};
+  const lines = new Map<string, number>();
+  layers.forEach((layer, col) => {
+    const list = groups[layer];
+    const x = PHONE.edge + col * pitch;
+    const step = list.length > 1 ? Math.min(PHONE.stepCap, room / (list.length - 1)) : PHONE.stepCap;
+    columns[layer] = { x };
+    list.forEach((c, i) => {
+      poses.set(c.id, pose(x, PHONE.top + i * step, i));
+      lines.set(c.id, titleLines(step));
+    });
+  });
+  return { poses, frame, columns, slots: [], lines, compact: true };
+}
+
+interface Run {
+  stage: Stage;
+  cols: number;
+}
+
+/** One way to break a sprint into rows of at most `perRow` columns, and the scale it fits the board at. */
+export interface SprintPlan {
+  perRow: number;
+  rows: Run[][];
+  widest: number;
+  /** World height with every stacked card showing a one-line title strip. */
+  height: number;
+  scale: number;
+}
+
+const rowCols = (row: Run[]) => row.reduce((n, r) => n + r.cols, 0);
+const rowTall = (row: Run[]) => Math.max(...row.map((r) => Math.ceil(r.stage.cards.length / r.cols)));
+
+export function phoneSprintPlan(stages: Stage[], board: Board, perRow: number): SprintPlan {
+  const rows: Run[][] = [];
+  for (const stage of stages) {
+    const run = { stage, cols: Math.min(perRow, Math.max(1, Math.ceil(stage.cards.length / MAX_PER_COL))) };
+    const last = rows.at(-1);
+    if (last && rowCols(last) + run.cols <= perRow) last.push(run);
+    else rows.push([run]);
+  }
+  const widest = Math.max(...rows.map(rowCols));
+  const contentW = (widest - 1) * (CARD_W + PHONE.gap) + CARD_W + 2 * PHONE.edge;
+  const height = rows.reduce((h, r) => h + PHONE.top + CARD_H + PHONE.gap + (rowTall(r) - 1) * titleStrip(1), PHONE.bottom - PHONE.gap);
+  return { perRow, rows, widest, height, scale: Math.min(board.w / contentW, board.h / height) };
+}
+
+/** Every column count from one to the total the stages can fill in a single row, with the scale each reaches. */
+export const phoneSprintPlans = (stages: Stage[], board: Board) =>
+  Array.from({ length: stages.reduce((n, s) => n + Math.max(1, Math.ceil(s.cards.length / MAX_PER_COL)), 0) }, (_, i) => phoneSprintPlan(stages, board, i + 1));
+
+/**
+ * Sprint lens for a portrait board: stages in reading order, wrapped into rows of the column count that fits the biggest cards.
+ * Width limits the scale for few columns and height for many, so the best count sits where they cross. Spare height becomes step.
+ */
+export function phoneSprintLayout(stages: Stage[], board: Board): Arrangement {
+  const plan = phoneSprintPlans(stages, board).reduce((a, b) => (b.scale > a.scale ? b : a));
+  const pitch = CARD_W + PHONE.gap;
+  const contentW = (plan.widest - 1) * pitch + CARD_W + 2 * PHONE.edge;
+  const frameW = board.w / plan.scale;
+  const frameH = board.h / plan.scale;
+  const stacked = plan.rows.reduce((n, r) => n + rowTall(r) - 1, 0);
+  const strip = titleStrip(1);
+  const step = stacked ? Math.min(PHONE.stepCap, strip + (frameH - plan.height) / stacked) : PHONE.stepCap;
+  const used = plan.height + (step - strip) * stacked;
+  const poses = new Map<string, Pose>();
+  const lines = new Map<string, number>();
+  const slots: StageSlot[] = [];
+  let y = 0;
+  for (const row of plan.rows) {
+    const height = PHONE.top + CARD_H + (rowTall(row) - 1) * step;
+    let col = (plan.widest - rowCols(row)) / 2;
+    for (const { stage, cols } of row) {
+      const xs = Array.from({ length: cols }, (_, j) => PHONE.edge + (col + j) * pitch);
+      const perCol = Math.ceil(stage.cards.length / cols);
+      stage.cards.forEach((id, i) => {
+        poses.set(id, pose(xs[Math.floor(i / perCol)], y + PHONE.top + (i % perCol) * step, i % perCol));
+        lines.set(id, titleLines(step));
+      });
+      slots.push({ stage, xs, y0: y, height, labelX: (xs[0] + xs[cols - 1]) / 2, labelY: y + 6 });
+      col += cols;
+    }
+    y += height + PHONE.gap;
+  }
+  const frame = { x: (contentW - frameW) / 2, y: Math.min(0, (used - frameH) / 2), w: frameW, h: frameH };
+  return { poses, frame, columns: {}, slots, lines, compact: true };
+}
+
+/** Where a lens puts the cards. A phone board re-lays the Layer lens to its shape. The other lenses use the fixed world. */
+export function arrange(cards: Card[], lens: Lens, stages: Stage[] = [], phone?: Board): Arrangement {
+  if (phone && lens === "layer" && cards.length) return phoneLayerLayout(cards, phone);
+  if (phone && lens === "sprint" && stages.length) return phoneSprintLayout(stages, phone);
+  const columns = Object.fromEntries(LAYER_ORDER.map((l, i) => [l, { x: LAYER_COLUMN_X(i) }]));
+  return { poses: lensLayout(cards, lens, stages), frame: WORLD_FRAME, columns, slots: lens === "sprint" ? stageSlots(stages) : [], lines: new Map(), compact: false };
+}
+
 function treeLayout(cards: Card[]): Map<string, Pose> {
   const groups = byLayer(cards);
   const rows: [Layer, number][] = [
@@ -125,7 +286,7 @@ const WRAP_AT = 7;
 const ROW_H = WORLD_H / 2;
 
 /** Long stages wrap into several columns, and a wide sprint breaks into two rows at the most balanced stage boundary. */
-export function stageSlots(stages: Stage[]) {
+export function stageSlots(stages: Stage[]): StageSlot[] {
   const cols = stages.map((st) => Math.max(1, Math.ceil(st.cards.length / MAX_PER_COL)));
   const total = cols.reduce((a, b) => a + b, 0);
   let split = stages.length;
@@ -148,7 +309,7 @@ export function stageSlots(stages: Stage[]) {
     return row.map((stage) => {
       const xs = Array.from({ length: cols[idx] }, (_, j) => stageX(k + j, rowCols[r]));
       k += cols[idx++];
-      return { stage, xs, y0, height, labelX: (xs[0] + xs[xs.length - 1]) / 2 };
+      return { stage, xs, y0, height, labelX: (xs[0] + xs[xs.length - 1]) / 2, labelY: y0 + 40 };
     });
   });
 }

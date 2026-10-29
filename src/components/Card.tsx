@@ -2,7 +2,7 @@ import { memo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent }
 import { motion } from "motion/react";
 import { LAYER_INFO, type Card as CardData } from "../types.ts";
 import { useT } from "../i18n/index.ts";
-import { CARD_H, CARD_SCALE, CARD_W, type Pose } from "../lib/layout.ts";
+import { CARD_H, CARD_SCALE, CARD_W, TITLE, type Pose } from "../lib/layout.ts";
 import { useInteraction } from "../context.ts";
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   fast: boolean;
   /** Pose to start from on mount, so the card glides into place. Omit to appear in place. */
   from?: { x: number; y: number; rotate: number; scale: number };
+  /** Draw only the title, in at most this many lines. */
+  lines?: number;
   focused: boolean;
   glow: boolean;
   /** Roving tabindex: only one card on the board is a tab stop. */
@@ -21,8 +23,9 @@ interface Props {
   onFocusCard(id: string): void;
 }
 
-function Face({ card }: { card: CardData }) {
+function Face({ card, lines }: { card: CardData; lines?: number }) {
   const t = useT();
+  if (lines) return <span className="name">{card.name}</span>;
   const info = LAYER_INFO[card.layer];
   const stat =
     card.layer === "router" ? t.card.routes(card.out) : card.layer === "playbook" ? t.card.uses(card.out) : card.layer === "agent" ? t.card.reads(card.out) : "";
@@ -42,7 +45,7 @@ function Face({ card }: { card: CardData }) {
   );
 }
 
-export const CardView = memo(function CardView({ card, pose, delay, fast, from, focused, glow, tabbable, onNavigate, onFocusCard }: Props) {
+export const CardView = memo(function CardView({ card, pose, delay, fast, from, lines, focused, glow, tabbable, onNavigate, onFocusCard }: Props) {
   const t = useT();
   const { setHovered, select } = useInteraction();
   const tilt = useRef<HTMLDivElement>(null);
@@ -78,7 +81,7 @@ export const CardView = memo(function CardView({ card, pose, delay, fast, from, 
   return (
     <motion.div
       className={`card-slot${pose.muted && !raised ? " muted" : ""}`}
-      style={{ "--u": CARD_SCALE, width: CARD_W, height: CARD_H, zIndex: raised ? 500 : pose.z, pointerEvents: pose.dim ? "none" : "auto" } as CSSProperties}
+      style={{ "--u": CARD_SCALE, ...(lines && { "--lines": lines, "--title-px": `${TITLE.px}px`, "--title-lead": TITLE.lead, "--title-pad": `${TITLE.pad}px` }), width: CARD_W, height: CARD_H, zIndex: raised ? 500 : pose.z, pointerEvents: pose.dim ? "none" : "auto" } as CSSProperties}
       initial={from ? { ...from, opacity: 1 } : false}
       animate={{ x: pose.x, y: pose.y, rotate: pose.rotate, scale: pose.scale, opacity: pose.dim ? 0.2 : 1 }}
       transition={{ type: "spring", stiffness: fast ? 300 : 140, damping: fast ? 29 : 20, mass: 0.9, delay: fast ? delay / 2 : delay }}
@@ -98,8 +101,8 @@ export const CardView = memo(function CardView({ card, pose, delay, fast, from, 
       >
         <div className="tilt" ref={tilt}>
           <div className={`flip${pose.faceDown ? " down" : ""}`}>
-            <article className="face front">
-              <Face card={card} />
+            <article className={`face front${lines ? " title-only" : ""}`}>
+              <Face card={card} lines={lines} />
               <i className="sheen" />
             </article>
             <div className="face back" />
