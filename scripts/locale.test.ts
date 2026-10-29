@@ -9,6 +9,15 @@ test("a regional tag matches its primary language", () => {
   assert.equal(matchLocale(null), null);
 });
 
+test("Simplified Chinese tags match zh and Traditional ones do not", () => {
+  assert.equal(matchLocale("zh"), "zh");
+  assert.equal(matchLocale("zh-CN"), "zh");
+  assert.equal(matchLocale("zh-Hans-CN"), "zh");
+  assert.equal(matchLocale("zh-TW"), null);
+  assert.equal(matchLocale("zh-Hant"), null);
+  assert.equal(systemLocale(["zh-TW", "zh-CN"]), "zh");
+});
+
 test("the first supported browser language wins, in the reader's order", () => {
   assert.equal(systemLocale(["fr-FR", "ko-KR", "en"]), "ko");
   assert.equal(systemLocale(["fr", "de"]), "en");
