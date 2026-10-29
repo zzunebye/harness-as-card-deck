@@ -356,7 +356,7 @@ pre.code code { font: 1em var(--mono); }
   .topbar { flex-wrap: nowrap; height: 52px; min-height: 0; padding: 0 8px 0 12px; gap: 4px; }
   .topbar h1 { flex-basis: auto; font-size: 15px; }
   .topbar h1 span { font-size: 12px; margin-right: 4px; letter-spacing: 2px; }
-  .topbar > .source-select { flex-shrink: 1; min-width: 0; margin-left: 4px; text-overflow: ellipsis; }
+  .topbar > .source-select { flex-shrink: 1; min-width: 0; height: 36px; margin-left: 4px; text-overflow: ellipsis; }
 }
 
 .topbar { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
