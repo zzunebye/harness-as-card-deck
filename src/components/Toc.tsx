@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { headingDomId } from "../lib/headingComponents.ts";
 import type { Heading } from "../lib/markdown.ts";
+import { useT } from "../i18n/index.ts";
 
 const SPY_MARGIN = 8;
 
@@ -9,6 +10,7 @@ export const tocHeadings = (headings: Heading[]) => headings.filter((h) => h.dep
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function Toc({ headings, scroller }: { headings: Heading[]; scroller: RefObject<HTMLElement | null> }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState(0);
   const bar = useRef<HTMLButtonElement>(null);
@@ -64,7 +66,7 @@ export function Toc({ headings, scroller }: { headings: Heading[]; scroller: Ref
     <nav
       ref={nav}
       className="toc"
-      aria-label="Table of contents"
+      aria-label={t.toc.label}
       onKeyDown={(e) => {
         if (e.key !== "Escape" || !open) return;
         e.stopPropagation();

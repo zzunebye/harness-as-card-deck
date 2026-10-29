@@ -33,6 +33,12 @@ export interface Card {
 /** Card markdown by card id. One lazily loaded chunk per deck, see `src/lib/bodies.ts`. */
 export type Bodies = Record<string, string>;
 
+/** Committed translations in `data/translations/<lang>/<deck>.json`. `src` is the first 12 hex chars of sha256 of the English body the entry was translated from. */
+export type Translations = Record<string, { src: string; body: string }>;
+
+/** Languages `npm run translate` can write card bodies in. The interface languages are `LOCALES` in `src/i18n/locale.ts`, and a body is shown only when its language is one of those. */
+export const LANGUAGES: Record<string, string> = { ko: "한국어", ja: "日本語", zh: "中文", es: "Español" };
+
 export interface Edge {
   from: string;
   to: string;
@@ -51,19 +57,22 @@ export interface Stage {
 export interface Deck {
   /** Ordered workflow stages; only decks without meaningful layers set this. */
   stages?: Stage[];
-  meta: { id: string; label: string; repo: string; subdir: string; sha: string; version: string; license: string };
+  meta: { id: string; label: string; repo: string; subdir: string; sha: string; version: string; license: string;
+    /** Languages with at least one fresh translation in this deck. */
+    langs: string[];
+  };
   /** Markdown introducing the harness itself, from `data/about/<id>.md`. */
   about: string;
   cards: Card[];
   edges: Edge[];
 }
 
-export const LAYER_INFO: Record<Layer, { suit: string; label: string; color: string }> = {
-  router: { suit: "♠", label: "Router", color: "#23232b" },
-  playbook: { suit: "♥", label: "Playbook", color: "#b5322b" },
-  skill: { suit: "♦", label: "Skill", color: "#2b6cb5" },
-  principle: { suit: "♣", label: "Principle", color: "#1f6b46" },
-  agent: { suit: "★", label: "Agent", color: "#7b3fb5" },
+export const LAYER_INFO: Record<Layer, { suit: string; color: string }> = {
+  router: { suit: "♠", color: "#23232b" },
+  playbook: { suit: "♥", color: "#b5322b" },
+  skill: { suit: "♦", color: "#2b6cb5" },
+  principle: { suit: "♣", color: "#1f6b46" },
+  agent: { suit: "★", color: "#7b3fb5" },
 };
 
 export const EDGE_INFO: Record<EdgeType, { label: string; color: string }> = {

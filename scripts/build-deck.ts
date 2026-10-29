@@ -1,11 +1,12 @@
-import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { createResolver } from "../src/lib/refs.ts";
 import { extractRefs } from "../src/lib/markdown.ts";
 import { assertEdgeTypes, edgeFromAdd, makeEdge } from "../src/lib/edges.ts";
-import { LAYER_ORDER, type Bodies, type Card, type Deck, type Edge, type Layer, type Stage } from "../src/types.ts";
+import { LAYER_ORDER, type Bodies, type Card, type Deck, type Edge, type Layer, type Stage, type Translations } from "../src/types.ts";
+import { triage } from "./translations.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const allOverrides = JSON.parse(readFileSync(join(ROOT, "data/overrides.json"), "utf8"));
@@ -157,12 +158,13 @@ const SOURCES: Source[] = [
     subdir: "",
     license: "MIT",
     collect(read, dir) {
-      return { cards: skillCards(dir, read), version: JSON.parse(read("plugin.json")).version };
+      const cards = skillCards(dir, read);
+      return { cards, version: JSON.parse(read("plugin.json")).version };
     },
   },
 ];
 
-function buildDeck(src: Source): { deck: Deck; bodies: Bodies } {
+function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Record<string, Bodies> } {
   const dir = join(ROOT, "vendor", src.id);
   const sha = readFileSync(join(ROOT, "vendor", `${src.id}.sha`), "utf8").trim();
   const overrides = allOverrides[src.id];
@@ -218,20 +220,40 @@ function buildDeck(src: Source): { deck: Deck; bodies: Bodies } {
     }
   }
 
+  const english: Bodies = Object.fromEntries(cards.map((c) => [c.id, c.body]));
+  const translated: Record<string, Bodies> = {};
+  const transDir = join(ROOT, "data/translations");
+  for (const lang of existsSync(transDir) ? readdirSync(transDir) : []) {
+    const file = join(transDir, lang, `${src.id}.json`);
+    if (!existsSync(file)) continue;
+    const t = triage(english, JSON.parse(readFileSync(file, "utf8")) as Translations, resolver);
+    for (const r of t.rejected) console.warn(`${src.id}/${lang} rejected ${r.id}: ${r.reason}`);
+    console.log(`${src.id}/${lang}: ${Object.keys(t.fresh).length} fresh, ${t.stale.length} stale, ${t.missing.length} missing, ${t.rejected.length} rejected`);
+    if (Object.keys(t.fresh).length) translated[lang] = t.fresh;
+  }
+
   const deck: Deck = {
     ...(stages && { stages }),
-    meta: { id: src.id, label: src.label, repo: src.repo, subdir: src.subdir, sha, version: collected.version, license: src.license },
+    meta: { id: src.id, label: src.label, repo: src.repo, subdir: src.subdir, sha, version: collected.version, license: src.license, langs: Object.keys(translated).sort() },
     about: readFileSync(join(ROOT, "data/about", `${src.id}.md`), "utf8").trim(),
     cards: cards.map(({ body: _, ...card }): Card => card),
     edges: [...edges.values()],
   };
-  return { deck, bodies: Object.fromEntries(cards.map((c) => [c.id, c.body])) };
+  return { deck, bodies: english, translated };
 }
 
 const built = SOURCES.map(buildDeck);
 writeFileSync(join(ROOT, "src/data/decks.json"), JSON.stringify(built.map((b) => b.deck)));
 mkdirSync(join(ROOT, "src/data/bodies"), { recursive: true });
 for (const { deck, bodies } of built) writeFileSync(join(ROOT, "src/data/bodies", `${deck.meta.id}.json`), JSON.stringify(bodies));
+// Derived chunks are rebuilt from scratch so a deleted or now-stale translation never lingers.
+for (const lang of readdirSync(join(ROOT, "src/data/bodies"), { withFileTypes: true }).filter((d) => d.isDirectory())) rmSync(join(ROOT, "src/data/bodies", lang.name), { recursive: true });
+for (const { deck, translated } of built) {
+  for (const [lang, bodies] of Object.entries(translated)) {
+    mkdirSync(join(ROOT, "src/data/bodies", lang), { recursive: true });
+    writeFileSync(join(ROOT, "src/data/bodies", lang, `${deck.meta.id}.json`), JSON.stringify(bodies));
+  }
+}
 
 // Star count is baked in at build time so the client makes no GitHub API call. A failed fetch keeps the previous value.
 const REPO = "zzunebye/harness-as-card-deck";

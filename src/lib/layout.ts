@@ -11,11 +11,11 @@ export const CARD_H = Math.round(168 * CARD_SCALE);
 
 export type Lens = "layer" | "tree" | "sprint" | "scatter";
 
-export const LENSES: { id: Lens; label: string }[] = [
-  { id: "layer", label: "Layer" },
-  { id: "tree", label: "Route Tree" },
-  { id: "sprint", label: "Sprint" },
-  { id: "scatter", label: "Scatter" },
+export const LENSES: { id: Lens }[] = [
+  { id: "layer" },
+  { id: "tree" },
+  { id: "sprint" },
+  { id: "scatter" },
 ];
 
 /** Scatter works for any deck; the other lenses need the deck's layers (layer, tree) or stages (sprint). */

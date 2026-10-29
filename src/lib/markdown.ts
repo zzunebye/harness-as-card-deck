@@ -50,3 +50,31 @@ export function extractRefs(markdown: string, resolver: Resolver, self: string):
   replaceRefs(parse(markdown), resolver, self, (id) => refs.push(id));
   return refs;
 }
+
+function literals(markdown: string) {
+  const out = { code: [] as string[], inline: [] as string[], urls: [] as string[] };
+  visit(parse(markdown), (node) => {
+    if (node.type === "code") out.code.push(`${node.lang ?? ""}\n${node.value}`);
+    else if (node.type === "inlineCode") out.inline.push(node.value);
+    else if (node.type === "link" || node.type === "definition") out.urls.push(node.url);
+  });
+  return out;
+}
+
+const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+// Word order differs between languages, so inline code and URLs may move within a sentence but not change.
+const sameBag = (a: string[], b: string[]) => sameList([...a].sort(), [...b].sort());
+const sameSet = (a: string[], b: string[]) => sameList([...new Set(a)].sort(), [...new Set(b)].sort());
+
+/** Why a translation cannot replace the English body, or null when it can. A translated token that resolves a chip or a changed code block would silently break the panel. */
+export function translationProblem(english: string, translated: string, resolver: Resolver, self: string): string | null {
+  const en = literals(english);
+  const tr = literals(translated);
+  if (!sameList(en.code, tr.code)) return "fenced code blocks differ";
+  if (!sameBag(en.inline, tr.inline)) return "inline code differs";
+  if (!sameBag(en.urls, tr.urls)) return "link URLs differ";
+  const enRefs = extractRefs(english, resolver, self);
+  const trRefs = extractRefs(translated, resolver, self);
+  if (!sameSet(enRefs, trRefs)) return `card references differ (${[...new Set(enRefs)].filter((r) => !trRefs.includes(r)).join(", ") || "extra"})`;
+  return null;
+}

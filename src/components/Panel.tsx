@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
+import { LANGUAGES, LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
 import { createResolver } from "../lib/refs.ts";
 import { extractHeadings, remarkDropComments, remarkRefs } from "../lib/markdown.ts";
 import { useBodies } from "../lib/bodies.ts";
-import { headingComponents } from "../lib/headingComponents.ts";
-import { Toc, tocHeadings } from "./Toc.tsx";
 import { useInteraction } from "../context.ts";
+import type { Phase } from "./Table.tsx";
 import { ReadingControls } from "./ReadingControls.tsx";
 import { loadPrefs, prefsStyle, savePrefs, type ReadingPrefs } from "../lib/readingPrefs.ts";
-import type { Phase } from "./Table.tsx";
+import { Toc, tocHeadings } from "./Toc.tsx";
+import { headingComponents } from "../lib/headingComponents.ts";
+import { useLocale, useT } from "../i18n/index.ts";
+import { matchLocale } from "../i18n/locale.ts";
+import { useAbout } from "../lib/about.ts";
 
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
   const [html, setHtml] = useState<string | null>(null);
@@ -39,6 +42,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 }
 
 function CopyButton({ text }: { text: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -48,10 +52,10 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       className={`copy${copied ? " done" : ""}`}
-      aria-label={copied ? "Copied" : "Copy code"}
+      aria-label={copied ? t.panel.copied : t.panel.copyCode}
       onClick={() => navigator.clipboard.writeText(text).then(() => setCopied(true), () => {})}
     >
-      {copied ? "Copied" : "Copy"}
+      {copied ? t.panel.copied : t.panel.copy}
     </button>
   );
 }
@@ -74,13 +78,20 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
   );
 }
 
-export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase; card: Card | null; onClose(): void }) {
+export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck; phase: Phase; card: Card | null; lang: string; onLang(lang: string): void; onClose(): void }) {
+  const t = useT();
+  const about = useAbout(deck, useLocale());
+  // Bodies can exist in languages the interface lacks, which the toggle cannot select.
+  const langs = deck.meta.langs.filter((l) => matchLocale(l) === l);
   const resolver = useMemo(() => createResolver(deck.cards.map(({ id, layer, name, title }) => ({ id, layer, name, title })), deck.meta.id), [deck]);
   const scroller = useRef<HTMLDivElement>(null);
   const bodies = useBodies(deck.meta.id);
-  const body = card ? bodies?.[card.id] : undefined;
+  const translations = useBodies(deck.meta.id, lang);
+  const translated = card && lang !== "en" ? translations?.[card.id] : undefined;
+  const body = card ? (translated ?? bodies?.[card.id]) : undefined;
   const headings = useMemo(() => (body ? extractHeadings(body) : []), [body]);
   const toc = useMemo(() => tocHeadings(headings), [headings]);
+
   const [prefs, setPrefs] = useState(loadPrefs);
   const changePrefs = (next: ReadingPrefs) => {
     setPrefs(next);
@@ -91,9 +102,8 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
     scroller.current?.scrollTo({ top: 0 });
   }, [card?.id, deck.meta.id]);
 
-  const components = useMemo<Components>(
-    () =>
-      ({
+  const components = useMemo<Components>(() => {
+    return {
         "ref-chip": Chip,
         ...headingComponents(headings),
         pre: ({ children }: ComponentProps<"pre">) => <>{children}</>,
@@ -107,9 +117,8 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
             {children}
           </a>
         ),
-      }) as unknown as Components,
-    [headings],
-  );
+    } as unknown as Components;
+  }, [headings]);
 
   const remarkPlugins = useMemo(() => (card ? [remarkGfm, remarkDropComments, remarkRefs(resolver, card.id)] : [remarkGfm, remarkDropComments]), [resolver, card]);
 
@@ -119,7 +128,7 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
         <h2>{deck.meta.label}</h2>
         <article className="md about">
           <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
-            {deck.about}
+            {about}
           </ReactMarkdown>
         </article>
         <Attribution deck={deck} />
@@ -130,16 +139,13 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
   if (!card) {
     return (
       <aside className="panel intro" ref={scroller}>
-        <h2>Pick a card</h2>
-        <p>
-          Each card is a real <code>SKILL.md</code> (or playbook) from {deck.meta.label}. Select one to pull its neighbours out of the deck and read the source here.
-          References in the text become chips: hover to find the card, click to jump to it.
-        </p>
+        <h2>{t.panel.pickCard}</h2>
+        <p>{t.panel.pickCardIntro(deck.meta.label)}</p>
         <dl className="legend">
-          {LAYER_ORDER.filter((l) => deck.cards.some((c) => c.layer === l)).map((l) => LAYER_INFO[l]).map((l) => (
-            <div key={l.label}>
-              <dt>{l.suit}</dt>
-              <dd>{l.label}</dd>
+          {LAYER_ORDER.filter((l) => deck.cards.some((c) => c.layer === l)).map((l) => (
+            <div key={l}>
+              <dt>{LAYER_INFO[l].suit}</dt>
+              <dd>{t.layers[l]}</dd>
             </div>
           ))}
         </dl>
@@ -147,7 +153,7 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
           <h2>{deck.meta.label}</h2>
           <article className="md about">
             <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
-              {deck.about}
+              {about}
             </ReactMarkdown>
           </article>
         </section>
@@ -157,16 +163,17 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
   }
 
   const info = LAYER_INFO[card.layer];
+  const ui = t.translation;
   return (
     <aside className="panel" ref={scroller} style={prefsStyle(prefs)}>
       <div className="panel-head">
         <span className={`badge badge-${card.layer}`}>
-          {info.suit} {info.label}
+          {info.suit} {t.layers[card.layer]}
         </span>
         <h2>{card.name}</h2>
         <div className="head-actions">
           <ReadingControls prefs={prefs} onChange={changePrefs} />
-          <button className="close" onClick={onClose} aria-label="Close">
+          <button className="close" onClick={onClose} aria-label={t.panel.close}>
             ✕
           </button>
         </div>
@@ -174,13 +181,31 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
           {card.path}
         </a>
         <p className="stat">
-          OUT {card.out} · IN {card.in}
+          {t.card.out(card.out)} · {t.card.in(card.in)}
         </p>
+        {langs.length > 0 && (
+          <div className="lang-toggle" role="group" aria-label={t.panel.language}>
+            {["en", ...langs].map((l) => (
+              <button key={l} type="button" aria-pressed={lang === l} className={lang === l ? "on" : ""} onClick={() => onLang(l)}>
+                {l === "en" ? "EN" : `${LANGUAGES[l] ?? l}${l === lang && translated !== undefined ? ` · ${ui.active}` : ""}`}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      {bodies ? (
+      {bodies && (lang === "en" || translations) ? (
         <>
-          {toc.length >= 3 && <Toc key={card.id} headings={toc} scroller={scroller} />}
-          <article className="md">
+          {toc.length >= 3 && <Toc key={`${card.id}:${lang}`} headings={toc} scroller={scroller} />}
+          {translated !== undefined && (
+            <div className="tr-banner" role="note" lang={lang}>
+              <p>{ui.banner}</p>
+              <button type="button" onClick={() => onLang("en")}>
+                {ui.viewOriginal}
+              </button>
+            </div>
+          )}
+          {lang !== "en" && translated === undefined && <p className="tr-note">{ui.notTranslated}</p>}
+          <article className="md" lang={translated === undefined ? undefined : lang}>
             <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
               {body}
             </ReactMarkdown>
@@ -188,19 +213,26 @@ export function Panel({ deck, phase, card, onClose }: { deck: Deck; phase: Phase
         </>
       ) : (
         <p className="md md-loading" aria-busy="true">
-          Loading {card.path}…
+          {t.panel.loading(card.path)}
         </p>
       )}
-      <Attribution deck={deck} />
+      <Attribution deck={deck} translatedLang={translated === undefined ? undefined : lang} />
     </aside>
   );
 }
 
-function Attribution({ deck }: { deck: Deck }) {
+function Attribution({ deck, translatedLang }: { deck: Deck; translatedLang?: string }) {
+  const t = useT();
   return (
     <p className="attribution">
-      Content from <a href={`https://github.com/${deck.meta.repo}/tree/${deck.meta.sha}${deck.meta.subdir && `/${deck.meta.subdir}`}`} target="_blank" rel="noreferrer">{deck.meta.repo}</a> · {deck.meta.label} {deck.meta.version} · {deck.meta.sha.slice(0, 7)} ·{" "}
-      <a href={`/${deck.meta.id}-LICENSE.txt`} target="_blank" rel="noreferrer">{deck.meta.license} License</a>
+      {translatedLang && (
+        <>
+          <span lang={translatedLang}>{t.translation.footer}</span>
+          <br />
+        </>
+      )}
+      {t.panel.contentFrom} <a href={`https://github.com/${deck.meta.repo}/tree/${deck.meta.sha}${deck.meta.subdir && `/${deck.meta.subdir}`}`} target="_blank" rel="noreferrer">{deck.meta.repo}</a> · {deck.meta.label} {deck.meta.version} · {deck.meta.sha.slice(0, 7)} ·{" "}
+      <a href={`/${deck.meta.id}-LICENSE.txt`} target="_blank" rel="noreferrer">{t.panel.license(deck.meta.license)}</a>
     </p>
   );
 }

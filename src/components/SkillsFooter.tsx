@@ -1,23 +1,24 @@
+import { useT } from "../i18n/index.ts";
+
 const DOCS = "https://platform.claude.com/docs/en/agents-and-tools/agent-skills";
 
 const LINKS = [
-  { label: "Agent Skills overview", href: `${DOCS}/overview` },
-  { label: "Skills in Claude Code", href: "https://code.claude.com/docs/en/skills" },
-  { label: "Authoring best practices", href: `${DOCS}/best-practices` },
-  { label: "What are Skills?", href: "https://support.claude.com/en/articles/12512176-what-are-skills" },
-  { label: "anthropics/skills", href: "https://github.com/anthropics/skills" },
-];
+  { key: "overview", href: `${DOCS}/overview` },
+  { key: "claudeCode", href: "https://code.claude.com/docs/en/skills" },
+  { key: "bestPractices", href: `${DOCS}/best-practices` },
+  { key: "whatAre", href: "https://support.claude.com/en/articles/12512176-what-are-skills" },
+  { key: "repo", href: "https://github.com/anthropics/skills" },
+] as const;
 
 function Body() {
+  const t = useT();
   return (
     <>
-      <p>
-        A skill is a folder with a <code>SKILL.md</code> file. Claude keeps only the skill's name and description in context. When a request matches the description, Claude reads the <code>SKILL.md</code> body, and it reads bundled files only if the body points to them.
-      </p>
-      <nav aria-label="Claude skills documentation">
+      <p>{t.skills.intro}</p>
+      <nav aria-label={t.skills.docsNav}>
         {LINKS.map((l) => (
           <a key={l.href} href={l.href} target="_blank" rel="noreferrer">
-            {l.label}
+            {t.skills.links[l.key]}
           </a>
         ))}
       </nav>
@@ -27,17 +28,18 @@ function Body() {
 
 // Both variants stay in the DOM and CSS shows one: the footer on wide screens, the collapsed disclosure under the heading on tablet and below.
 export function SkillsFooter({ compact = false }: { compact?: boolean }) {
+  const t = useT();
   if (compact) {
     return (
       <details className="skills-footer skills-compact">
-        <summary>What is a skill?</summary>
+        <summary>{t.skills.title}</summary>
         <Body />
       </details>
     );
   }
   return (
     <section className="skills-footer skills-wide">
-      <h3>What is a skill?</h3>
+      <h3>{t.skills.title}</h3>
       <Body />
     </section>
   );

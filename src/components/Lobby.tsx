@@ -2,6 +2,7 @@ import type { Deck } from "../types.ts";
 import { backStyle } from "../lib/backs.ts";
 import { pileLayers, pileOffset, type Launch } from "../lib/layout.ts";
 import { SkillsFooter } from "./SkillsFooter.tsx";
+import { useT } from "../i18n/index.ts";
 
 const layerStyle = (i: number, count: number): React.CSSProperties => {
   const o = pileOffset(i, count);
@@ -9,10 +10,12 @@ const layerStyle = (i: number, count: number): React.CSSProperties => {
 };
 
 export function Lobby({ decks, onPick }: { decks: Deck[]; onPick(id: string, from: Launch): void }) {
+  const t = useT();
   return (
     <main className="lobby">
-      <h2>Pick a deck!</h2>
+      <h2>{t.lobby.pickDeck}</h2>
       <SkillsFooter compact />
+      <div className="lobby-body">
       <ul>
         {decks.map((d) => {
           const count = pileLayers(d.cards.length);
@@ -33,7 +36,7 @@ export function Lobby({ decks, onPick }: { decks: Deck[]; onPick(id: string, fro
               </span>
               <b>{d.meta.label}</b>
               <small>
-                {d.cards.length} cards · {d.meta.repo}
+                {t.lobby.cardCount(d.cards.length)} · {d.meta.repo}
               </small>
             </button>
           </li>
@@ -41,6 +44,7 @@ export function Lobby({ decks, onPick }: { decks: Deck[]; onPick(id: string, fro
         })}
       </ul>
       <SkillsFooter />
+      </div>
     </main>
   );
 }

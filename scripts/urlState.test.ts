@@ -3,12 +3,12 @@ import test from "node:test";
 import { analyticsPage, parseUrlState, serializeUrlState } from "../src/lib/urlState.ts";
 import type { Deck } from "../src/types.ts";
 
-const deck = (id: string, cards: string[], stages?: unknown) => ({ meta: { id }, cards: cards.map((c) => ({ id: c })), stages }) as unknown as Deck;
-const decks = [deck("pstack", ["skill:how"]), deck("gstack", ["skill:browse"], [])];
+const deck = (id: string, cards: string[], stages?: unknown, langs: string[] = []) => ({ meta: { id, langs }, cards: cards.map((c) => ({ id: c })), stages }) as unknown as Deck;
+const decks = [deck("pstack", ["skill:how"], undefined, ["ko"]), deck("gstack", ["skill:browse"], [])];
 const defaults = { source: "pstack", lens: "layer" } as const;
 
 test("a shared view round-trips", () => {
-  const state = { source: "gstack", lens: "scatter", card: "skill:browse" } as const;
+  const state = { source: "gstack", lens: "scatter", card: "skill:browse", lang: "ko" } as const;
   assert.deepEqual(parseUrlState(serializeUrlState(state, defaults), decks), state);
 });
 
@@ -29,13 +29,26 @@ test("a card missing from the deck becomes null", () => {
   assert.equal(parseUrlState("?source=pstack&card=skill:browse", decks)?.card, null);
 });
 
+test("a picked language is written, English included, and a detected one is not", () => {
+  const state = { source: "pstack", lens: "layer", card: null, lang: "ko" } as const;
+  assert.equal(serializeUrlState(state, defaults), "?lang=ko");
+  assert.equal(serializeUrlState({ ...state, lang: "en" }, defaults), "?lang=en");
+  assert.equal(serializeUrlState({ ...state, lang: null }, defaults), "");
+  assert.equal(parseUrlState("?source=pstack&lang=ko", decks)?.lang, "ko");
+});
+
+test("a language the interface lacks parses to null", () => {
+  assert.equal(parseUrlState("?source=pstack&lang=xx", decks)?.lang, null);
+  assert.equal(parseUrlState("?source=pstack", decks)?.lang, null);
+});
+
 test("params equal to defaults are omitted", () => {
-  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null }, defaults), "");
-  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null }, { ...defaults, lens: null }), "?lens=layer");
+  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null }, defaults), "");
+  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null }, { ...defaults, lens: null }), "?lens=layer");
 });
 
 test("a null default source always writes the source", () => {
-  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null }, { source: null, lens: "layer" }), "?source=pstack");
+  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null }, { source: null, lens: "layer" }), "?source=pstack");
 });
 
 test("the lobby is one analytics page", () => {

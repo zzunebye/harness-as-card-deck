@@ -1,9 +1,11 @@
 import { LAYER_INFO, type Card } from "../types.ts";
+import { useT } from "../i18n/index.ts";
 
 export function Breadcrumbs({ trail, cards, onJump, onClear, onOpen }: { trail: string[]; cards: Map<string, Card>; onJump(i: number): void; onClear(): void; onOpen?(): void }) {
+  const t = useT();
   if (!trail.length) return null;
   return (
-    <nav className="crumbs" aria-label="Path">
+    <nav className="crumbs" aria-label={t.crumbs.path}>
       {trail.map((id, i) => {
         const c = cards.get(id)!;
         return (
@@ -15,11 +17,11 @@ export function Breadcrumbs({ trail, cards, onJump, onClear, onOpen }: { trail: 
       })}
       {onOpen && (
         <button className="crumb-open" onClick={onOpen}>
-          read ▸
+          {t.crumbs.read}
         </button>
       )}
       <button className="crumb-clear" onClick={onClear}>
-        clear
+        {t.crumbs.clear}
       </button>
     </nav>
   );

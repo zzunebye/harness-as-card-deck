@@ -20,6 +20,7 @@ import {
 } from "../lib/layout.ts";
 import { CardView } from "./Card.tsx";
 import { useInteraction } from "../context.ts";
+import { useT } from "../i18n/index.ts";
 import { backStyle } from "../lib/backs.ts";
 import { usePanZoom, type Fit } from "../lib/usePanZoom.ts";
 
@@ -85,6 +86,7 @@ interface Props {
 const NO_FIT: Fit = { scale: 1, x: 0, y: 0 };
 
 export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leaving, enter, onDeal, onBackground, inset, fast }: Props) {
+  const t = useT();
   const { hovered } = useInteraction();
   const wrap = useRef<HTMLDivElement>(null);
   const still = useReducedMotion();
@@ -226,7 +228,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
   return (
     <div className={`table${panning ? " panning" : ""}`} ref={wrap}
       role="group"
-      aria-label="Cards. Arrow keys move between cards, Enter opens one."
+      aria-label={t.table.cards}
       onFocus={() => wrap.current?.scrollTo(0, 0)}
       onClick={(e) => e.target === e.currentTarget && onBackground()}
       {...bind}
@@ -249,7 +251,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
               <b style={{ color: layer === "playbook" ? "#ff8a80" : layer === "skill" ? "#8ab8ff" : layer === "principle" ? "#7be0ab" : layer === "agent" ? "#d0aaff" : "#e8e8ee" }}>
                 {LAYER_INFO[layer].suit}
               </b>
-              {LAYER_INFO[layer].label}
+              {t.layers[layer]}
             </div>
           ))}
 
@@ -267,7 +269,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
         {phase === "dealt" && !leaving && lens === "tree" && !selected &&
           (["router", "playbook", "skill", "principle"] as const).map((layer, i) => deck.cards.some((c) => c.layer === layer) && (
             <div key={layer} className="row-label" style={{ top: [20, 250, 480, 710][i] + CARD_H + 4 }}>
-              {LAYER_INFO[layer].suit} {LAYER_INFO[layer].label}
+              {LAYER_INFO[layer].suit} {t.layers[layer]}
             </div>
           ))}
 
@@ -297,27 +299,27 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
             disabled={phase === "shuffling"}
             style={{ left: WORLD_W / 2 - 160, top: WORLD_H / 2 + (CARD_H * STACK_SCALE) / 2 + 60 }}
           >
-            {phase === "stack" ? "Click the deck to deal" : "Shuffling…"}
+            {phase === "stack" ? t.table.dealHint : t.table.shuffling}
           </button>
         )}
-        {phase === "stack" && !leaving && <button className="deck-hit" aria-label="Deal the deck" onClick={onDeal} {...hotProps} style={{ left: (WORLD_W - CARD_W * STACK_SCALE) / 2 - 20, top: (WORLD_H - CARD_H * STACK_SCALE) / 2 - 20, width: CARD_W * STACK_SCALE + 40, height: CARD_H * STACK_SCALE + 40, zIndex: 999 }} />}
+        {phase === "stack" && !leaving && <button className="deck-hit" aria-label={t.table.dealDeck} onClick={onDeal} {...hotProps} style={{ left: (WORLD_W - CARD_W * STACK_SCALE) / 2 - 20, top: (WORLD_H - CARD_H * STACK_SCALE) / 2 - 20, width: CARD_W * STACK_SCALE + 40, height: CARD_H * STACK_SCALE + 40, zIndex: 999 }} />}
       </div>
       )}
       {phase === "dealt" && (
-        <div className="zoom-ctl" role="group" aria-label="Zoom">
-          <button onClick={() => zoomBy(1.4)} aria-label="Zoom in">
+        <div className="zoom-ctl" role="group" aria-label={t.table.zoom}>
+          <button onClick={() => zoomBy(1.4)} aria-label={t.table.zoomIn}>
             +
           </button>
-          <button onClick={() => zoomBy(1 / 1.4)} aria-label="Zoom out" disabled={view.k <= 1}>
+          <button onClick={() => zoomBy(1 / 1.4)} aria-label={t.table.zoomOut} disabled={view.k <= 1}>
             −
           </button>
           <button onClick={reset} disabled={view.k <= 1}>
-            Fit
+            {t.table.fit}
           </button>
           <span className="zoom-sep" aria-hidden="true" />
           {(["in", "out"] as const).map((k) => (
             <button key={k} className={`flow${flow[k] ? " on" : ""}`} aria-pressed={flow[k]} onClick={() => onFlow((f) => ({ ...f, [k]: !f[k] }))}>
-              {k === "in" ? "Inflow" : "Outflow"}
+              {k === "in" ? t.table.inflow : t.table.outflow}
             </button>
           ))}
         </div>

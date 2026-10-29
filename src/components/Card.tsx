@@ -1,6 +1,7 @@
 import { memo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import { motion } from "motion/react";
 import { LAYER_INFO, type Card as CardData } from "../types.ts";
+import { useT } from "../i18n/index.ts";
 import { CARD_H, CARD_SCALE, CARD_W, type Pose } from "../lib/layout.ts";
 import { useInteraction } from "../context.ts";
 
@@ -21,26 +22,28 @@ interface Props {
 }
 
 function Face({ card }: { card: CardData }) {
+  const t = useT();
   const info = LAYER_INFO[card.layer];
   const stat =
-    card.layer === "router" ? `${card.out} routes` : card.layer === "playbook" ? `uses ${card.out}` : card.layer === "agent" ? `reads ${card.out}` : "";
+    card.layer === "router" ? t.card.routes(card.out) : card.layer === "playbook" ? t.card.uses(card.out) : card.layer === "agent" ? t.card.reads(card.out) : "";
   return (
     <>
       <header>
         <span className="suit">{info.suit}</span>
         <span className="name">{card.name}</span>
       </header>
-      <p className={`body body-${card.layer}`}>{card.layer === "router" ? `${stat} · ${card.in} cite it` : card.description}</p>
+      <p className={`body body-${card.layer}`}>{card.layer === "router" ? `${stat} · ${t.card.citedBy(card.in)}` : card.description}</p>
       <footer>
-        <span>OUT {card.out}</span>
+        <span>{t.card.out(card.out)}</span>
         {stat && card.layer !== "router" && <span className="tag">{stat}</span>}
-        <span>IN {card.in}</span>
+        <span>{t.card.in(card.in)}</span>
       </footer>
     </>
   );
 }
 
 export const CardView = memo(function CardView({ card, pose, delay, fast, from, focused, glow, tabbable, onNavigate, onFocusCard }: Props) {
+  const t = useT();
   const { setHovered, select } = useInteraction();
   const tilt = useRef<HTMLDivElement>(null);
   const raised = glow && !pose.dim;
@@ -86,7 +89,7 @@ export const CardView = memo(function CardView({ card, pose, delay, fast, from, 
         tabIndex={tabbable && !pose.dim && !pose.faceDown ? 0 : -1}
         data-card-id={card.id}
         onFocus={() => onFocusCard(card.id)}
-        aria-label={`${card.layer} ${card.name}`}
+        aria-label={`${t.layers[card.layer]} ${card.name}`}
         onClick={() => !pose.faceDown && select(card.id)}
         onKeyDown={onKey}
         onMouseEnter={() => setHovered(card.id)}

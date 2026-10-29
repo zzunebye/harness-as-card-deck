@@ -2,15 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LAYER_INFO, type Deck } from "../types.ts";
 import { useBodies } from "../lib/bodies.ts";
 import { searchCards } from "../lib/search.ts";
+import { useT } from "../i18n/index.ts";
 
 interface Props {
   deck: Deck;
   onPick(id: string): void;
+  // Phones show a collapsed search icon; while expanded the field covers the topbar.
+  expanded: boolean;
+  onClose(): void;
 }
 
 const isTyping = (el: EventTarget | null) => el instanceof HTMLElement && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
 
-export function Search({ deck, onPick }: Props) {
+export function Search({ deck, onPick, expanded, onClose }: Props) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -20,6 +25,9 @@ export function Search({ deck, onPick }: Props) {
   const hits = useMemo(() => searchCards(deck.cards, bodies, query), [deck, bodies, query]);
 
   useEffect(() => setActive(0), [query]);
+  useEffect(() => {
+    if (expanded) input.current?.focus();
+  }, [expanded]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -51,22 +59,24 @@ export function Search({ deck, onPick }: Props) {
       setQuery("");
       setOpen(false);
       input.current?.blur();
+      onClose();
     }
   };
 
   const showList = open && query.trim() !== "";
 
   return (
-    <div className="search">
+    <div className={`search${expanded ? " expanded" : ""}`}>
+      <button type="button" className="search-back" aria-label={t.topbar.closeSearch} onClick={onClose}>←</button>
       <input
         ref={input}
         type="search"
         role="combobox"
-        aria-label="Search cards"
+        aria-label={t.search.label}
         aria-expanded={showList}
         aria-controls="search-results"
         aria-activedescendant={showList && hits[active] ? `search-hit-${active}` : undefined}
-        placeholder="Search cards"
+        placeholder={t.search.placeholder}
         autoComplete="off"
         spellCheck={false}
         value={query}
@@ -78,14 +88,14 @@ export function Search({ deck, onPick }: Props) {
       <kbd aria-hidden="true">/</kbd>
       {showList && (
         <ul id="search-results" role="listbox" className="search-results">
-          {hits.length === 0 && <li className="search-empty">No card matches “{query.trim()}”.</li>}
+          {hits.length === 0 && <li className="search-empty">{t.search.empty(query.trim())}</li>}
           {hits.map((hit, i) => {
             const card = cards.get(hit.id)!;
             const info = LAYER_INFO[card.layer];
             return (
               // mousedown, not click, because the input's blur would close the list before a click lands.
               <li key={hit.id} id={`search-hit-${i}`} role="option" aria-selected={i === active} className={i === active ? "on" : ""} onMouseDown={(e) => (e.preventDefault(), pick(hit.id))} onMouseEnter={() => setActive(i)}>
-                <span className="search-suit" style={{ color: card.layer === "router" ? "var(--cream)" : info.color }} title={info.label}>{info.suit}</span>
+                <span className="search-suit" style={{ color: card.layer === "router" ? "var(--cream)" : info.color }} title={t.layers[card.layer]}>{info.suit}</span>
                 <span className="search-text">
                   <b>{card.name}</b>
                   <small>{hit.snippet ?? card.description}</small>

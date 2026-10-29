@@ -12,6 +12,11 @@ import { Panel } from "./components/Panel.tsx";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
 import { Lobby } from "./components/Lobby.tsx";
 import { Search } from "./components/Search.tsx";
+import { I18nProvider, useT } from "./i18n/index.ts";
+import { chosenLocale, LOCALES, matchLocale, systemLocale, type Locale } from "./i18n/locale.ts";
+
+// The one topbar or board popover that is open on a phone. They are exclusive, so one value replaces three booleans.
+type Popover = "search" | "menu" | "legend";
 
 const decks = decksJson as Deck[];
 
@@ -26,6 +31,20 @@ function readPanelW() {
 function savePanelW(w: number) {
   try {
     localStorage.setItem("panelW", String(Math.round(w)));
+  } catch {}
+}
+
+function readLang() {
+  try {
+    return localStorage.getItem("lang");
+  } catch {
+    return null;
+  }
+}
+
+function saveLang(lang: Locale) {
+  try {
+    localStorage.setItem("lang", lang);
   } catch {}
 }
 
@@ -66,7 +85,20 @@ const keepCampaign: BeforeSend = (event) => {
   return { ...event, url: url.href };
 };
 
+// The reader's explicit pick, or null to follow the browser. Only a pick is stored and written to the URL.
 export function App() {
+  const [choice, setChoice] = useState(() => chosenLocale(location.search, readLang()));
+  const locale = choice ?? systemLocale(navigator.languages ?? [navigator.language]);
+  const onChoice = useCallback((l: Locale) => (setChoice(l), saveLang(l)), []);
+  return (
+    <I18nProvider locale={locale}>
+      <Shell locale={locale} choice={choice} onChoice={onChoice} />
+    </I18nProvider>
+  );
+}
+
+function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | null; onChoice(l: Locale): void }) {
+  const t = useT();
   const [phase, setPhase] = useState<Phase>(skipsIntro(location.search, initial) ? "dealt" : "stack");
   const [lens, setLens] = useState<Lens>(initial?.lens ?? lensesFor(decks[0])[0].id);
   // null is the lobby, where every deck sits as its own stack until one is picked.
@@ -80,12 +112,22 @@ export function App() {
   const [enter, setEnter] = useState(false);
   const [flow, setFlow] = useState({ in: true, out: true });
   const [panelW, setPanelW] = useState(readPanelW);
+  // "View original" shows the English body without changing the interface language.
+  const [original, setOriginal] = useState(false);
+
+  const [popover, setPopover] = useState<Popover | null>(null);
+  const toggle = (p: Popover) => setPopover((cur) => (cur === p ? null : p));
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const vw = useViewportWidth();
   const overlay = vw <= OVERLAY_MAX;
 
   const deck = decks.find((d) => d.meta.id === source) ?? null;
   const cards = useMemo(() => new Map((deck?.cards ?? []).map((c) => [c.id, c])), [deck]);
+  // A deck without translations in the interface language shows English bodies.
+  const lang = !original && deck?.meta.langs.includes(locale) ? locale : "en";
+  const pickLocale = useCallback((l: Locale) => (setOriginal(false), onChoice(l)), [onChoice]);
+  const chooseLang = useCallback((l: string) => (l === "en" ? setOriginal(true) : pickLocale(matchLocale(l) ?? "en")), [pickLocale]);
   const [panelOpen, setPanelOpen] = useState(true);
   const selected = trail.at(-1) ?? null;
   // Keep the board visible beside the drawer, except on phones where the drawer covers it.
@@ -169,6 +211,7 @@ export function App() {
   const searchPick = useCallback(
     (id: string) => {
       if (phase === "stack") deal();
+      setPopover(null);
       select(id);
     },
     [phase, deal, select],
@@ -176,7 +219,7 @@ export function App() {
 
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
   useEffect(() => {
-    const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
+    const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected, lang: choice }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
     const id = deck?.meta.id ?? null;
     const url = location.pathname + withCampaign(search);
     if (id !== urlSource.current) {
@@ -185,7 +228,7 @@ export function App() {
     } else {
       history.replaceState(null, "", url);
     }
-  }, [lens, selected, phase, deck]);
+  }, [lens, selected, phase, deck, choice]);
 
   useEffect(() => {
     const onPop = () => {
@@ -207,10 +250,21 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !(e.target instanceof HTMLInputElement) && dismiss();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.target instanceof HTMLInputElement) return;
+      if (popover) setPopover(null);
+      else dismiss();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dismiss]);
+  }, [dismiss, popover]);
+
+  useEffect(() => {
+    if (popover !== "menu") return;
+    const on = (e: PointerEvent) => menuRef.current?.contains(e.target as Node) || setPopover(null);
+    document.addEventListener("pointerdown", on);
+    return () => document.removeEventListener("pointerdown", on);
+  }, [popover]);
 
   const startResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -234,43 +288,61 @@ export function App() {
     return (Object.keys(EDGE_INFO) as EdgeType[]).filter((t) => used.has(t));
   }, [deck]);
   const ctx = useMemo(() => ({ hovered, setHovered, select }), [hovered, select]);
+  const tabs = deck !== null && phase === "dealt";
   const page = analyticsPage({ source, card: selected });
 
   return (
     <InteractionContext.Provider value={ctx}>
       {/* The outgoing deck drops its card before it slides away, and that in-between view is not one the visitor chose. */}
       <Analytics route={leaving ? undefined : page.route} path={page.path} beforeSend={keepCampaign} />
-      <div className="app">
+      <div className={`app${tabs ? " tabs" : ""}`}>
         <header className={`topbar${deck ? " with-deck" : ""}`}>
           <h1>
-            <button className="home" onClick={() => switchSource(null)} aria-label="All decks">
+            <button className="home" onClick={() => switchSource(null)} aria-label={t.topbar.allDecks}>
               <span>♠♥♦♣</span><b className="title">Harness as Deck</b>
             </button>
           </h1>
           {deck && (
-            <select className="source-select" aria-label="Deck" value={source ?? ""} onChange={(e) => switchSource(e.target.value)}>
+            <select className="source-select" aria-label={t.topbar.deck} value={source ?? ""} onChange={(e) => switchSource(e.target.value)}>
               {decks.map((d) => (
                 <option key={d.meta.id} value={d.meta.id}>{d.meta.label}</option>
               ))}
             </select>
           )}
-          {deck && phase === "dealt" && (
-            <div className="lenses" role="tablist" aria-label="Lens">
+          {tabs && (
+            <div className="lenses" role="tablist" aria-label={t.topbar.lens}>
               {lensesFor(deck).map((l) => (
                 <button key={l.id} role="tab" aria-selected={lens === l.id} className={lens === l.id ? "on" : ""} onClick={() => setLens(l.id)}>
-                  {l.label}
+                  {t.lenses[l.id]}
                 </button>
               ))}
             </div>
           )}
-          {deck && !leaving && <Search key={deck.meta.id} deck={deck} onPick={searchPick} />}
-          <a className="gh-link" href="https://github.com/zzunebye/harness-as-card-deck" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">
+          {deck && !leaving && (
+            <>
+              <button className="icon-btn search-btn" aria-label={t.topbar.openSearch} onClick={() => setPopover("search")}>
+                <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></svg>
+              </button>
+              <Search key={deck.meta.id} deck={deck} onPick={searchPick} expanded={popover === "search"} onClose={() => setPopover(null)} />
+            </>
+          )}
+          <div className={`topbar-menu${popover === "menu" ? " open" : ""}`} ref={menuRef}>
+            <button className="icon-btn menu-btn" aria-label={t.topbar.menu} aria-expanded={popover === "menu"} aria-controls="topbar-menu-items" onClick={() => toggle("menu")}>⋯</button>
+            <div className="menu-items" id="topbar-menu-items">
+          <select className="source-select locale-select" aria-label={t.topbar.language} value={locale} onChange={(e) => (pickLocale(e.target.value as Locale), setPopover(null))}>
+            {(Object.keys(LOCALES) as Locale[]).map((l) => (
+              <option key={l} value={l}>{LOCALES[l]}</option>
+            ))}
+          </select>
+          <a className="gh-link" href="https://github.com/zzunebye/harness-as-card-deck" target="_blank" rel="noopener noreferrer" aria-label={t.topbar.viewSource}>
             <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
               <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
             </svg>
             <span>zzunebye/harness-as-card-deck</span>
             {repo.stars > 0 && <b className="gh-stars">★ {repo.stars}</b>}
           </a>
+            </div>
+          </div>
         </header>
         {!deck ? (
           <Lobby decks={decks} onPick={switchSource} />
@@ -280,18 +352,21 @@ export function App() {
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />
             {legendTypes.length > 0 && (
-              <ul className="edge-legend">
-                {legendTypes.map((t) => (
+              <div className={`legend-box${popover === "legend" ? " open" : ""}`}>
+                <button className="icon-btn legend-btn" aria-label={t.topbar.legend} aria-expanded={popover === "legend"} aria-controls="edge-legend" onClick={() => toggle("legend")}>ⓘ</button>
+                <ul className="edge-legend" id="edge-legend">
+                  {legendTypes.map((t) => (
                     <li key={t} title={edgeDefinition(t)}>
                       <i style={{ background: EDGE_INFO[t].color }} />
                       {EDGE_INFO[t].label}
                     </li>
                   ))}
-              </ul>
+                </ul>
+              </div>
             )}
           </section>
-          <div className="resizer" role="separator" aria-orientation="vertical" aria-label="Resize panel" onPointerDown={startResize} />
-          <Panel deck={deck} phase={phase} card={selected ? cards.get(selected)! : null} onClose={dismiss} />
+          <div className="resizer" role="separator" aria-orientation="vertical" aria-label={t.topbar.resizePanel} onPointerDown={startResize} />
+          <Panel deck={deck} phase={phase} card={selected ? cards.get(selected)! : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
         </main>
         )}
       </div>

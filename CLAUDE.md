@@ -10,9 +10,10 @@ Harness as Deck: a React + Vite SPA that renders [cursor/plugins `pstack/`](http
 
 - `npm run dev` — regenerates `src/data/decks.json`, then starts Vite
 - `npm run build` — `deck` → `check` → `vite build` into `dist/`
-- `npm run check` — `tsc --noEmit` and `node --test scripts/edges.test.ts`
+- `npm run check` — `tsc --noEmit` and `node --test` over `scripts/*.test.ts`
 - `npm run deck` — regenerate `src/data/decks.json` and `src/data/bodies/*.json` only (`node scripts/build-deck.ts`, runs TS directly via Node)
 - `node scripts/bench-load.ts <urlA> <urlB> [runs] [--out runs.json]` — cold-cache first-load benchmark of two `vite preview` builds under Lighthouse-mobile throttling, alternating A and B
+- `npm run translate -- --lang ko [--deck gstack] [--limit N] [--stub]` — translate missing or stale card bodies via the Anthropic API (`ANTHROPIC_API_KEY`), writing `data/translations/<lang>/<deck>.json` after each card. `--limit` caps cards per run. `--stub` fakes it for plumbing checks only, never commit its output
 - `npm run fetch` — re-download the pinned snapshots into `vendor/pstack` and `vendor/gstack` (commits pinned in `vendor/<id>.sha`; to bump one, edit its SHA then fetch)
 
 ## Architecture
@@ -27,6 +28,8 @@ Two stages: a build-time data pipeline, and a client that only consumes its outp
 - `src/lib/refs.ts` is shared: the build script uses it for edge extraction and the client uses the same resolver (via `remarkRefs`) to render linked chips inside the SKILL.md panel, so both directions stay consistent.
 
 **Client (`src/`)**: `App.tsx` owns state (`source`, `phase`: stack → shuffling → dealt, `lens`, selection `trail`, hover) and shares hover/select through `InteractionContext` (`context.ts`). `components/Table.tsx` renders cards positioned by `lib/layout.ts`, which computes a `Pose` per card for each lens (`stack`, `layer`, `tree`) in a fixed `WORLD_W × WORLD_H` coordinate space; animation uses `motion`. `Panel.tsx` renders the selected card's markdown (react-markdown + shiki).
+
+**Interface language (`src/i18n/`)**: `en.tsx` is the source of truth for UI strings, and every other locale (`ko.tsx`) is typed `Messages`, so a missing or extra key fails `npm run check`. Components read strings through `useT()`. Non-English locales are lazy chunks loaded by `I18nProvider`. `locale.ts` holds the pure detection logic: `?lang=` beats the stored pick, which beats `navigator.languages`. Only a picked language is stored and written to the URL. Adding a locale is a `LOCALES` entry plus a file typed `Messages`, and optionally `data/about/<locale>/<id>.md` for the deck intros (lazy chunks via `src/lib/about.ts`, English `Deck.about` until one arrives, structure checked by `scripts/about.test.ts`). A card body is translated only when its language is also a locale (`LANGUAGES` in `src/types.ts` is what `npm run translate` can write).
 
 `src/data/decks.json` and `src/data/bodies/` are generated — don't hand-edit them; `dist/` and `node_modules/` are gitignored build output.
 
