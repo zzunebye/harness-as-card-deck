@@ -224,9 +224,10 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   // A deep link would otherwise be the only entry, so Back leaves the site. Put the deck's board behind it.
   useEffect(() => {
     if (!initial?.card || window.innerWidth > OVERLAY_MAX || history.state?.trail !== undefined) return;
+    const full = location.href;
     const base = serializeUrlState({ ...initial, card: null, lang: choice }, { source: null, lens: null });
     history.replaceState({ trail: [] }, "", location.pathname + withCampaign(base));
-    history.pushState({ trail: initialTrail }, "", location.href);
+    history.pushState({ trail: initialTrail }, "", full);
   }, []);
 
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
