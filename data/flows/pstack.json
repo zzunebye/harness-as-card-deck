@@ -5,32 +5,79 @@
     "steps": [
       {
         "card": "router:poteto-mode",
-        "reason": "Classifies the request as a reported defect and matches it to the Bug fix playbook.",
-        "quote": "Match the task to a playbook below and open its full steps"
+        "reason": "Matches the request to the Bug fix playbook, then copies that playbook's steps into its todo list.",
+        "quote": "A reported defect to reproduce, root-cause, and fix with runtime evidence."
       },
       {
         "card": "playbook:bug-fix",
-        "reason": "Copies the playbook's steps into a todo list before any task-specific work, and restates the goal to the user first.",
-        "quote": "Be scientific. Every shipped line traces to runtime evidence."
+        "reason": "Sets the working style: the agent stays the lead who plans, reviews and verifies, and delegates the investigation and the fix.",
+        "quote": "Delegate investigation and the fix to subagents, stay in the lead."
+      },
+      {
+        "card": "skill:in-your-own-words",
+        "reason": "Before any work, tells the user the goal (stop the intermittent 500) and the smallest change it expects to make. It does not wait for confirmation.",
+        "quote": "Restate in your own words what you think the user's goals are and what problem they're trying to solve."
       },
       {
         "card": "principle:fix-root-causes",
-        "reason": "Applies while debugging: trace the 500 back to where the system first went wrong instead of guarding the symptom.",
+        "reason": "Commits to finding what produced the bad state instead of hiding the 500 behind a try/catch or a retry.",
         "quote": "When debugging, fix the fault, not the place where it surfaced."
       },
       {
+        "card": "skill:how",
+        "reason": "Playbook step 2. Maps how the login handler, session and database path work, to seed the list of candidate causes. Runs in read-only subagents.",
+        "quote": "Explore the codebase to answer \"how does X work?\" questions."
+      },
+      {
+        "card": "skill:why",
+        "reason": "Playbook step 2. Checks git history and PRs for a recent change to the login path, in case this is a regression.",
+        "quote": "Investigate the motivation and intent behind code."
+      },
+      {
+        "card": "skill:architect",
+        "reason": "Playbook step 3, only if the fix crosses a function boundary. Sketches types and signatures before any code is written.",
+        "quote": "Design it twice."
+      },
+      {
+        "card": "principle:exhaust-the-design-space",
+        "reason": "The idea behind architect's \"design it twice\": compare structurally different shapes for the fix before committing to one."
+      },
+      {
+        "card": "skill:arena",
+        "reason": "Also inside architect: parallel candidates sketch the fix, a judge from another model family scores them, and the lead grafts the best parts into one base.",
+        "quote": "Every candidate gets the same prompt, so the prompt is the contract."
+      },
+      {
+        "card": "agent:poteto-agent",
+        "reason": "Playbook step 3. A background delegate writes the fix against the chosen sketch, with the user's goal restated in its brief.",
+        "quote": "You are one of its delegates."
+      },
+      {
         "card": "principle:prove-it-works",
-        "reason": "Applies before declaring done: verify against the real artifact, not a proxy.",
-        "quote": "Verify every task output by checking the real thing directly."
+        "reason": "Playbook step 4. Reruns the original login repro on the same surface and checks the 500 is gone, instead of trusting that it compiles.",
+        "quote": "Do not infer from proxies, self-reports, or \"it compiles.\""
+      },
+      {
+        "card": "skill:tdd",
+        "reason": "Playbook step 5, when a cheap local test exists. Writes a failing regression test, watches it fail for the right reason, then fixes.",
+        "quote": "Write the failing test first."
+      },
+      {
+        "card": "principle:sequence-verifiable-units",
+        "reason": "Orders the commits so the failing test lands before the fix, and each commit is checked before the next.",
+        "quote": "The canonical shape is the failing test first, then the fix on top."
+      },
+      {
+        "card": "playbook:opening-a-pr",
+        "reason": "Playbook step 6. Cleans the diff, opens a ready PR with a Why, Scope and Verification body, and does not babysit it.",
+        "quote": "Run `/deslop` from `cursor-team-kit` over the diff before commit and `/no-comments` before review."
+      },
+      {
+        "card": "agent:comment-sicko",
+        "reason": "The /no-comments pass spawns this agent to delete needless comments before review.",
+        "quote": "I hate comments. Feed me the parent scoped files or diff."
       }
     ],
-    "later": [
-      { "card": "skill:how", "when": "step 2, map the affected subsystem" },
-      { "card": "skill:why", "when": "step 2, investigate the cause" },
-      { "card": "skill:architect", "when": "only if the fix crosses a function boundary" },
-      { "card": "skill:tdd", "when": "only if there is a cheap local test path" },
-      { "card": "principle:sequence-verifiable-units", "when": "step 5, commit in verified units" },
-      { "card": "playbook:opening-a-pr", "when": "step 6, ship the fix" }
-    ]
+    "later": []
   }
 ]
