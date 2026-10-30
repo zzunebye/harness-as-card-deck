@@ -53,20 +53,20 @@ test("a null default source always writes the source", () => {
 });
 
 test("a flow step round-trips with a one-based step in the URL", () => {
-  const state = { source: "pstack", lens: "tree", card: null, lang: null, flow: { id: "bug-fix", step: 1 } } as const;
+  const state = { source: "pstack", lens: "tree", card: null, lang: null, flow: { id: "bug-fix", stepIndex: 1 } } as const;
   const search = serializeUrlState(state, defaults);
   assert.equal(search, "?lens=tree&flow=bug-fix&step=2");
   assert.deepEqual(parseUrlState(search, decks), state);
 });
 
 test("a flow link alone is a shared view", () => {
-  assert.deepEqual(parseUrlState("?flow=bug-fix", decks)?.flow, { id: "bug-fix", step: 0 });
+  assert.deepEqual(parseUrlState("?flow=bug-fix", decks)?.flow, { id: "bug-fix", stepIndex: 0 });
 });
 
 test("a step outside the flow is clamped, and an unknown or foreign flow becomes null", () => {
-  assert.equal(parseUrlState("?flow=bug-fix&step=99", decks)?.flow?.step, 2);
-  assert.equal(parseUrlState("?flow=bug-fix&step=0", decks)?.flow?.step, 0);
-  assert.equal(parseUrlState("?flow=bug-fix&step=x", decks)?.flow?.step, 0);
+  assert.equal(parseUrlState("?flow=bug-fix&step=99", decks)?.flow?.stepIndex, 2);
+  assert.equal(parseUrlState("?flow=bug-fix&step=0", decks)?.flow?.stepIndex, 0);
+  assert.equal(parseUrlState("?flow=bug-fix&step=x", decks)?.flow?.stepIndex, 0);
   assert.equal(parseUrlState("?source=pstack&flow=nope", decks)?.flow, null);
   assert.equal(parseUrlState("?source=gstack&flow=bug-fix", decks)?.flow, null);
 });

@@ -6,7 +6,7 @@ interface Props {
   deck: Deck;
   replay: FlowState | null;
   onStart(id: string): void;
-  onStep(step: number): void;
+  onStep(stepIndex: number): void;
   onClose(): void;
   onDetails?: () => void;
 }
@@ -28,19 +28,19 @@ export function FlowBar({ deck, replay, onStart, onStep, onClose, onDetails }: P
     );
   }
   const total = flow.steps.length;
-  const step = flow.steps[replay.step];
+  const step = flow.steps[replay.stepIndex];
   const layer = deck.cards.find((c) => c.id === step.card)?.layer;
   return (
     <div className="flow-bar active" role="group" aria-label={t.flow.heading}>
       <p className="flow-prompt">{flow.prompt}</p>
       <div className="flow-controls">
-        <button type="button" aria-label={t.flow.prev} disabled={replay.step === 0} onClick={() => onStep(replay.step - 1)}>
+        <button type="button" aria-label={t.flow.prev} disabled={replay.stepIndex === 0} onClick={() => onStep(replay.stepIndex - 1)}>
           ‹
         </button>
         <span className="flow-count" aria-live="polite">
-          {t.flow.step(replay.step + 1, total)}
+          {t.flow.step(replay.stepIndex + 1, total)}
         </span>
-        <button type="button" aria-label={t.flow.next} disabled={replay.step === total - 1} onClick={() => onStep(replay.step + 1)}>
+        <button type="button" aria-label={t.flow.next} disabled={replay.stepIndex === total - 1} onClick={() => onStep(replay.stepIndex + 1)}>
           ›
         </button>
         <button type="button" className="flow-close" aria-label={t.flow.close} onClick={onClose}>

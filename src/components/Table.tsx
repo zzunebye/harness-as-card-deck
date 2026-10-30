@@ -50,7 +50,7 @@ const BADGE_HISTORY = 5;
 
 export interface Route {
   flow: Flow;
-  step: number;
+  stepIndex: number;
 }
 
 const ROUTE_COLOR = EDGE_INFO["routes-to"].color;
@@ -230,7 +230,7 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
   const routeIds = useMemo(() => {
     if (!routed) return null;
     const steps = routed.flow.steps.map((s) => s.card);
-    return { visited: new Set(steps.slice(0, routed.step + 1)), current: steps[routed.step] };
+    return { visited: new Set(steps.slice(0, routed.stepIndex + 1)), current: steps[routed.stepIndex] };
   }, [routed]);
 
   const poses = leaving
@@ -280,11 +280,11 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
     if (!routed) return [];
     const centers = (id: string) => cardBox(base.get(id)!);
     const { steps, later } = routed.flow;
-    const numbered = steps.slice(1, routed.step + 1).map((s, i) => {
+    const numbered = steps.slice(1, routed.stepIndex + 1).map((s, i) => {
       const { d, at } = curve(centers(steps[i].card), centers(s.card));
-      return { key: `route:${i}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 }, age: routed.step - 1 - i };
+      return { key: `route:${i}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 }, age: routed.stepIndex - 1 - i };
     });
-    const caller = steps[routed.step];
+    const caller = steps[routed.stepIndex];
     const dashed = deck.cards.find((c) => c.id === caller.card)?.layer === "playbook"
       ? later.map((l) => ({ key: `later:${caller.card}>${l.card}`, d: curve(centers(caller.card), centers(l.card)).d, color: ROUTE_COLOR, arrows: [], dashed: true }))
       : [];

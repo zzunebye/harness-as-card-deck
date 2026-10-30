@@ -129,7 +129,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const deck = decks.find((d) => d.meta.id === source) ?? null;
   const route = useMemo(() => {
     const f = deck?.flows?.find((f) => f.id === replay?.id);
-    return f && replay ? { flow: f, step: replay.step } : null;
+    return f && replay ? { flow: f, stepIndex: replay.stepIndex } : null;
   }, [deck, replay]);
   const cards = useMemo(() => new Map((deck?.cards ?? []).map((c) => [c.id, c])), [deck]);
   // A deck without translations in the interface language shows English bodies.
@@ -138,7 +138,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const chooseLang = useCallback((l: string) => (l === "en" ? setOriginal(true) : pickLocale(matchLocale(l) ?? "en")), [pickLocale]);
   const [panelOpen, setPanelOpen] = useState(!(initial?.flow && window.innerWidth <= OVERLAY_MAX));
   const selected = trail.at(-1) ?? null;
-  const stepCard = route ? route.flow.steps[route.step].card : null;
+  const stepCard = route ? route.flow.steps[route.stepIndex].card : null;
   const shown = selected ?? stepCard;
   // Keep the board visible beside the drawer, except on phones where the drawer covers it.
   const inset = overlay && shown && panelOpen && vw > PHONE_MAX ? Math.min(panelW, vw * 0.55) : 0;
@@ -337,7 +337,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const startReplay = useCallback(
     (id: string) => {
       clear();
-      setReplay({ id, step: 0 });
+      setReplay({ id, stepIndex: 0 });
       if (deck && lensesFor(deck).some((l) => l.id === "tree")) setLens("tree");
       if (overlay) setPanelOpen(false);
     },
@@ -414,7 +414,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={() => trail.length > 0 && dismiss()} inset={inset} fast={vw <= PHONE_MAX} />
             {phase === "dealt" && !leaving && deck.flows && (
-              <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(step) => setReplay((r) => r && { ...r, step })} onClose={() => setReplay(null)} onDetails={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+              <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(stepIndex) => setReplay((r) => r && { ...r, stepIndex })} onClose={() => setReplay(null)} onDetails={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             )}
             {legendTypes.length > 0 && (
               <div className={`legend-box${popover === "legend" ? " open" : ""}`}>
@@ -431,7 +431,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
             )}
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label={t.topbar.resizePanel} onPointerDown={startResize} />
-          <Panel deck={deck} phase={phase} card={shown ? cards.get(shown)! : null} step={route && shown === stepCard ? { n: route.step + 1, total: route.flow.steps.length, reason: route.flow.steps[route.step].reason, quote: route.flow.steps[route.step].quote } : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
+          <Panel deck={deck} phase={phase} card={shown ? cards.get(shown)! : null} step={route && shown === stepCard ? { n: route.stepIndex + 1, total: route.flow.steps.length, reason: route.flow.steps[route.stepIndex].reason, quote: route.flow.steps[route.stepIndex].quote } : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
         </main>
         )}
       </div>

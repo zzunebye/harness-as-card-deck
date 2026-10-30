@@ -2,7 +2,7 @@ import type { Deck } from "../types.ts";
 import { lensesFor, type Lens } from "./layout.ts";
 import { matchLocale, type Locale } from "../i18n/locale.ts";
 
-export type FlowState = { id: string; step: number };
+export type FlowState = { id: string; stepIndex: number };
 
 export type UrlState = { source: string; lens: Lens; card: string | null; lang: Locale | null; flow: FlowState | null };
 
@@ -23,7 +23,7 @@ export function parseUrlState(search: string, decks: Deck[]): UrlState | null {
     lens,
     card: card && deck.cards.some((c) => c.id === card) ? card : null,
     lang: matchLocale(params.get("lang")),
-    flow: flow ? { id: flow.id, step: Math.min(Math.max(n || 1, 1), flow.steps.length) - 1 } : null,
+    flow: flow ? { id: flow.id, stepIndex: Math.min(Math.max(n || 1, 1), flow.steps.length) - 1 } : null,
   };
 }
 
@@ -34,7 +34,7 @@ export function serializeUrlState(state: UrlState, defaults: Defaults): string {
   if (state.card) params.set("card", state.card);
   if (state.flow) {
     params.set("flow", state.flow.id);
-    params.set("step", String(state.flow.step + 1));
+    params.set("step", String(state.flow.stepIndex + 1));
   }
   // Only a language the reader picked is written. A detected one stays out, so a shared link does not force it on someone else.
   if (state.lang) params.set("lang", state.lang);
