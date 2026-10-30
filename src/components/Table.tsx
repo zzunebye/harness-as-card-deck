@@ -292,7 +292,7 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
     const { steps, later } = routed.flow;
     const numbered = steps.slice(1, routed.step + 1).map((s, i) => {
       const { d, at } = curve(centers(steps[i].card), centers(s.card));
-      return { key: `route:${steps[i].card}>${s.card}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 }, age: routed.step - 1 - i };
+      return { key: `route:${i}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 }, age: routed.step - 1 - i };
     });
     // Later calls fan out from the playbook, so they are drawn only while it is the current step. On other steps they would bury the numbered path.
     const caller = steps[routed.step];

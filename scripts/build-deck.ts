@@ -223,6 +223,7 @@ function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Recor
   const flowFile = join(ROOT, "data/flows", `${src.id}.json`);
   const flows: Flow[] | undefined = existsSync(flowFile) ? JSON.parse(readFileSync(flowFile, "utf8")) : undefined;
   for (const f of flows ?? []) {
+    if (!f.steps.length) throw new Error(`${src.id} flow ${f.id}: no steps`);
     for (const id of [...f.steps.map((s) => s.card), ...f.later.map((l) => l.card)]) {
       if (!byId.has(id)) throw new Error(`${src.id} flow ${f.id}: unknown card ${id}`);
     }

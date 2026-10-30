@@ -137,7 +137,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const lang = !original && deck?.meta.langs.includes(locale) ? locale : "en";
   const pickLocale = useCallback((l: Locale) => (setOriginal(false), onChoice(l)), [onChoice]);
   const chooseLang = useCallback((l: string) => (l === "en" ? setOriginal(true) : pickLocale(matchLocale(l) ?? "en")), [pickLocale]);
-  const [panelOpen, setPanelOpen] = useState(true);
+  // A flow deep link on a phone opens on the board, so the step bar is not hidden behind the drawer.
+  const [panelOpen, setPanelOpen] = useState(!(initial?.flow && window.innerWidth <= OVERLAY_MAX));
   const selected = trail.at(-1) ?? null;
   // The replayed step's card fills the panel until the reader picks another card.
   const stepCard = route ? route.flow.steps[route.step].card : null;
@@ -167,11 +168,18 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     setTrail([]);
   }, []);
   // In drawer mode the first dismiss only hides the panel so the selected card's relations stay on the board.
+  // Order: popover, then the selected card, then the replay. Esc and the panel close button share it.
   const dismiss = useCallback(() => {
     clearTimeout(panelTimer.current);
-    if (overlay && shown && panelOpen) setPanelOpen(false);
-    else clear();
-  }, [overlay, shown, panelOpen, clear]);
+    if (popover) setPopover(null);
+    else if (trail.length > 0) {
+      if (overlay && panelOpen) setPanelOpen(false);
+      else clear();
+    } else if (replay) {
+      if (overlay && panelOpen) setPanelOpen(false);
+      else setReplay(null);
+    }
+  }, [popover, trail, overlay, panelOpen, replay, clear]);
 
   // Fetch the deck's card text while the stack and shuffle play, so it is there by the time a card can be opened.
   useEffect(() => {
@@ -236,7 +244,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   useEffect(() => {
     if (!initial?.card || window.innerWidth > OVERLAY_MAX || history.state?.trail !== undefined) return;
     const full = location.href;
-    const base = serializeUrlState({ ...initial, card: null, lang: choice, flow: null }, { source: null, lens: null });
+    const base = serializeUrlState({ ...initial, card: null, lang: choice }, { source: null, lens: null });
     history.replaceState({ trail: [] }, "", location.pathname + withCampaign(base));
     history.pushState({ trail: initialTrail }, "", full);
   }, []);
@@ -299,13 +307,11 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.target instanceof HTMLInputElement) return;
-      if (popover) setPopover(null);
-      else if (replay) setReplay(null);
-      else dismiss();
+      dismiss();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dismiss, popover, replay]);
+  }, [dismiss]);
 
 
   useEffect(() => {
@@ -334,11 +340,12 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
 
   const startReplay = useCallback(
     (id: string) => {
+      clear();
       setReplay({ id, step: 0 });
       if (deck && lensesFor(deck).some((l) => l.id === "tree")) setLens("tree");
       if (overlay) setPanelOpen(false);
     },
-    [deck, overlay],
+    [deck, overlay, clear],
   );
 
   const legendTypes = useMemo(() => {
@@ -409,7 +416,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         <main className={`stage${overlay ? " overlay" : ""}${reading ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
-            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />
+            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={() => trail.length > 0 && dismiss()} inset={inset} fast={vw <= PHONE_MAX} />
             {phase === "dealt" && !leaving && deck.flows && (
               <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(step) => setReplay((r) => r && { ...r, step })} onClose={() => setReplay(null)} onDetails={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             )}
