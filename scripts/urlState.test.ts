@@ -3,12 +3,13 @@ import test from "node:test";
 import { analyticsPage, parseUrlState, serializeUrlState, trailFor } from "../src/lib/urlState.ts";
 import type { Deck } from "../src/types.ts";
 
-const deck = (id: string, cards: string[], stages?: unknown, langs: string[] = []) => ({ meta: { id, langs }, cards: cards.map((c) => ({ id: c })), stages }) as unknown as Deck;
-const decks = [deck("pstack", ["skill:how"], undefined, ["ko"]), deck("gstack", ["skill:browse"], [])];
+const deck = (id: string, cards: string[], stages?: unknown, langs: string[] = [], flows?: unknown) => ({ meta: { id, langs }, cards: cards.map((c) => ({ id: c })), stages, flows }) as unknown as Deck;
+const flows = [{ id: "bug-fix", steps: [{}, {}, {}] }];
+const decks = [deck("pstack", ["skill:how"], undefined, ["ko"], flows), deck("gstack", ["skill:browse"], [])];
 const defaults = { source: "pstack", lens: "layer" } as const;
 
 test("a shared view round-trips", () => {
-  const state = { source: "gstack", lens: "scatter", card: "skill:browse", lang: "ko" } as const;
+  const state = { source: "gstack", lens: "scatter", card: "skill:browse", lang: "ko", flow: null } as const;
   assert.deepEqual(parseUrlState(serializeUrlState(state, defaults), decks), state);
 });
 
@@ -30,7 +31,7 @@ test("a card missing from the deck becomes null", () => {
 });
 
 test("a picked language is written, English included, and a detected one is not", () => {
-  const state = { source: "pstack", lens: "layer", card: null, lang: "ko" } as const;
+  const state = { source: "pstack", lens: "layer", card: null, lang: "ko", flow: null } as const;
   assert.equal(serializeUrlState(state, defaults), "?lang=ko");
   assert.equal(serializeUrlState({ ...state, lang: "en" }, defaults), "?lang=en");
   assert.equal(serializeUrlState({ ...state, lang: null }, defaults), "");
@@ -43,12 +44,31 @@ test("a language the interface lacks parses to null", () => {
 });
 
 test("params equal to defaults are omitted", () => {
-  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null }, defaults), "");
-  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null }, { ...defaults, lens: null }), "?lens=layer");
+  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null, flow: null }, defaults), "");
+  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null, flow: null }, { ...defaults, lens: null }), "?lens=layer");
 });
 
 test("a null default source always writes the source", () => {
-  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null }, { source: null, lens: "layer" }), "?source=pstack");
+  assert.equal(serializeUrlState({ source: "pstack", lens: "layer", card: null, lang: null, flow: null }, { source: null, lens: "layer" }), "?source=pstack");
+});
+
+test("a flow step round-trips with a one-based step in the URL", () => {
+  const state = { source: "pstack", lens: "tree", card: null, lang: null, flow: { id: "bug-fix", step: 1 } } as const;
+  const search = serializeUrlState(state, defaults);
+  assert.equal(search, "?lens=tree&flow=bug-fix&step=2");
+  assert.deepEqual(parseUrlState(search, decks), state);
+});
+
+test("a flow link alone is a shared view", () => {
+  assert.deepEqual(parseUrlState("?flow=bug-fix", decks)?.flow, { id: "bug-fix", step: 0 });
+});
+
+test("a step outside the flow is clamped, and an unknown or foreign flow becomes null", () => {
+  assert.equal(parseUrlState("?flow=bug-fix&step=99", decks)?.flow?.step, 2);
+  assert.equal(parseUrlState("?flow=bug-fix&step=0", decks)?.flow?.step, 0);
+  assert.equal(parseUrlState("?flow=bug-fix&step=x", decks)?.flow?.step, 0);
+  assert.equal(parseUrlState("?source=pstack&flow=nope", decks)?.flow, null);
+  assert.equal(parseUrlState("?source=gstack&flow=bug-fix", decks)?.flow, null);
 });
 
 test("the lobby is one analytics page", () => {

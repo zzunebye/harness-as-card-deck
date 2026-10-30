@@ -4,7 +4,7 @@ import repo from "./data/repo.json";
 import { EDGE_INFO, edgeDefinition, type Deck, type EdgeType } from "./types.ts";
 import { lensesFor, type Launch, type Lens } from "./lib/layout.ts";
 import { Analytics, type BeforeSend } from "@vercel/analytics/react";
-import { analyticsPage, parseUrlState, serializeUrlState, trailFor } from "./lib/urlState.ts";
+import { analyticsPage, parseUrlState, serializeUrlState, trailFor, type FlowState } from "./lib/urlState.ts";
 import { loadBodies } from "./lib/bodies.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
@@ -65,7 +65,7 @@ function useViewportWidth() {
 }
 
 // A link that names a lens or card skips the shuffle intro.
-const skipsIntro = (search: string, state: ReturnType<typeof parseUrlState>) => state !== null && (state.card !== null || new URLSearchParams(search).has("lens"));
+const skipsIntro = (search: string, state: ReturnType<typeof parseUrlState>) => state !== null && (state.card !== null || state.flow !== null || new URLSearchParams(search).has("lens"));
 
 const initial = parseUrlState(location.search, decks);
 const initialDeck = decks.find((d) => d.meta.id === initial?.source);
@@ -106,6 +106,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   // null is the lobby, where every deck sits as its own stack until one is picked.
   const [source, setSource] = useState<string | null>(initial?.source ?? null);
   const [trail, setTrail] = useState<string[]>(initialTrail);
+  // The example request being replayed. Named apart from `flow` below, which is the edge in/out toggle.
+  const [replay, setReplay] = useState<FlowState | null>(initial?.flow ?? null);
   const [hovered, setHovered] = useState<string | null>(null);
   // Where the picked deck sat in the lobby. Only the Table that mounts for that pick starts from it.
   const [launch, setLaunch] = useState<Launch | null>(null);
@@ -179,6 +181,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     clearTimeout(swapTimer.current);
     setHovered(null);
     setTrail([]);
+    setReplay(null);
     setPhase("stack");
     setLaunch(from);
     setLeaving(false);
@@ -225,14 +228,14 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   useEffect(() => {
     if (!initial?.card || window.innerWidth > OVERLAY_MAX || history.state?.trail !== undefined) return;
     const full = location.href;
-    const base = serializeUrlState({ ...initial, card: null, lang: choice }, { source: null, lens: null });
+    const base = serializeUrlState({ ...initial, card: null, lang: choice, flow: null }, { source: null, lens: null });
     history.replaceState({ trail: [] }, "", location.pathname + withCampaign(base));
     history.pushState({ trail: initialTrail }, "", full);
   }, []);
 
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
   useEffect(() => {
-    const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected, lang: choice }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
+    const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected, lang: choice, flow: replay }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
     const id = deck?.meta.id ?? null;
     const url = location.pathname + withCampaign(search);
     const key = trail.join("|");
@@ -247,7 +250,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     } else {
       history.replaceState({ trail }, "", url);
     }
-  }, [lens, selected, phase, deck, choice, trail, leaving, overlay]);
+  }, [lens, selected, phase, deck, choice, trail, leaving, overlay, replay]);
 
   useEffect(() => {
     const onPop = () => {
@@ -263,6 +266,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         setLeaving(false);
         setHovered(null);
         setTrail(nextTrail);
+        setReplay(state?.flow ?? null);
         setPanelOpen(nextTrail.length > 0);
         return;
       }
@@ -276,6 +280,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
       setSource(state?.source ?? null);
       setLens(state?.lens ?? lensesFor(decks[0])[0].id);
       setTrail(nextTrail);
+      setReplay(state?.flow ?? null);
       if (nextTrail.length > 0) setPanelOpen(true);
       setPhase(skipsIntro(location.search, state) ? "dealt" : "stack");
     };
@@ -287,11 +292,13 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.target instanceof HTMLInputElement) return;
       if (popover) setPopover(null);
+      else if (replay) setReplay(null);
       else dismiss();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dismiss, popover]);
+  }, [dismiss, popover, replay]);
+
 
   useEffect(() => {
     if (popover !== "menu") return;
