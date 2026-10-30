@@ -78,7 +78,7 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
   );
 }
 
-export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck; phase: Phase; card: Card | null; lang: string; onLang(lang: string): void; onClose(): void }) {
+export function Panel({ deck, phase, card, step, lang, onLang, onClose }: { deck: Deck; phase: Phase; card: Card | null; step?: { n: number; total: number; reason: string; quote?: string } | null; lang: string; onLang(lang: string): void; onClose(): void }) {
   const t = useT();
   const about = useAbout(deck, useLocale());
   // Bodies can exist in languages the interface lacks, which the toggle cannot select.
@@ -193,6 +193,13 @@ export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck
           </div>
         )}
       </div>
+      {step && (
+        <section className="flow-step" aria-label={t.flow.heading}>
+          <b className="flow-step-n">{t.flow.step(step.n, step.total)}</b>
+          <p>{step.reason}</p>
+          {step.quote && <blockquote lang="en">{step.quote}</blockquote>}
+        </section>
+      )}
       {bodies && (lang === "en" || translations) ? (
         <>
           {toc.length >= 3 && <Toc key={`${card.id}:${lang}`} headings={toc} scroller={scroller} onClose={onClose} />}

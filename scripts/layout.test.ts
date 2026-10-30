@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { CARD_H, CARD_W, LAYER_COLUMN_X, STACK_CTA, STACK_SCALE, TITLE, WORLD_FRAME, WORLD_H, WORLD_W, arrange, fitFrame, lensLayout, pileArrangement, pileLayers, pileOffset, phoneLayerLayout, phoneSprintLayout, phoneSprintPlans, titleLineCount } from "../src/lib/layout.ts";
+import { clipToBorder, type CardBox, CARD_H, CARD_W, LAYER_COLUMN_X, STACK_CTA, STACK_SCALE, TITLE, WORLD_FRAME, WORLD_H, WORLD_W, arrange, fitFrame, lensLayout, pileArrangement, pileLayers, pileOffset, phoneLayerLayout, phoneSprintLayout, phoneSprintPlans, titleLineCount } from "../src/lib/layout.ts";
 import { LAYER_ORDER, type Card, type Layer, type Stage } from "../src/types.ts";
 
 const deck = (counts: Partial<Record<Layer, number>>): Card[] =>
@@ -235,5 +235,27 @@ test("the phone Sprint spaces each stacked card by its own title lines and fits 
       const next = s.stage.cards[i + 1] && a.poses.get(s.stage.cards[i + 1])!;
       if (next && next.x === p.x) assert.ok(next.y - p.y >= TITLE.pad + titles.get(id)! * TITLE.px * TITLE.lead - 1e-9);
     }
+  }
+});
+
+const box: CardBox = { x: 100, y: 100, hw: 50, hh: 80 };
+const onBorder = (p: { x: number; y: number }) =>
+  Math.abs(Math.abs(p.x - box.x) - box.hw) < 1e-9 || Math.abs(Math.abs(p.y - box.y) - box.hh) < 1e-9;
+
+test("clipToBorder lands on the border for horizontal, vertical and diagonal targets", () => {
+  assert.deepEqual(clipToBorder(box, { x: 400, y: 100 }), { x: 150, y: 100 });
+  assert.deepEqual(clipToBorder(box, { x: 100, y: -300 }), { x: 100, y: 20 });
+  const wide = clipToBorder(box, { x: 500, y: 300 });
+  assert.ok(onBorder(wide));
+  assert.equal(wide.x, 150);
+  assert.equal(wide.y, 125);
+  const tall = clipToBorder(box, { x: 140, y: 600 });
+  assert.equal(tall.y, 180);
+  assert.ok(onBorder(tall));
+});
+
+test("clipToBorder keeps the center when the target is inside the box or on the center", () => {
+  for (const target of [{ x: 100, y: 100 }, { x: 120, y: 110 }, { x: 150, y: 180 }]) {
+    assert.deepEqual(clipToBorder(box, target), { x: 100, y: 100 });
   }
 });
