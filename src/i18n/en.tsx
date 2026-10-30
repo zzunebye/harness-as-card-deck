@@ -61,6 +61,15 @@ export const en = {
     inflow: "Inflow",
     outflow: "Outflow",
   },
+  flow: {
+    heading: "Example request",
+    prev: "Previous step",
+    next: "Next step",
+    step: (n: number, total: number) => `Step ${n} of ${total}`,
+    close: "Exit example",
+    details: "Read card",
+    disclaimer: "One example of how a request can flow. A real agent may take a different path.",
+  },
   card: {
     out: (n: number) => `OUT ${n}`,
     in: (n: number) => `IN ${n}`,

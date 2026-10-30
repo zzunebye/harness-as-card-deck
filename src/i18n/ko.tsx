@@ -59,6 +59,15 @@ const ko: Messages = {
     inflow: "들어오는 선",
     outflow: "나가는 선",
   },
+  flow: {
+    heading: "예시 요청",
+    prev: "이전 단계",
+    next: "다음 단계",
+    step: (n, total) => `${total}단계 중 ${n}단계`,
+    close: "예시 닫기",
+    details: "카드 읽기",
+    disclaimer: "요청이 흘러가는 방식의 한 예시입니다. 실제 에이전트는 다른 경로를 택할 수 있습니다.",
+  },
   card: {
     out: (n) => `OUT ${n}`,
     in: (n) => `IN ${n}`,

@@ -59,6 +59,15 @@ const zh: Messages = {
     inflow: "流入",
     outflow: "流出",
   },
+  flow: {
+    heading: "示例请求",
+    prev: "上一步",
+    next: "下一步",
+    step: (n, total) => `第 ${n} 步，共 ${total} 步`,
+    close: "退出示例",
+    details: "阅读卡片",
+    disclaimer: "这只是请求流转方式的一个示例，实际的智能体可能走不同的路径。",
+  },
   card: {
     out: (n) => `OUT ${n}`,
     in: (n) => `IN ${n}`,

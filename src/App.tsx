@@ -8,6 +8,7 @@ import { analyticsPage, parseUrlState, serializeUrlState, trailFor, type FlowSta
 import { loadBodies } from "./lib/bodies.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
+import { FlowBar } from "./components/FlowBar.tsx";
 import { Panel } from "./components/Panel.tsx";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
 import { Lobby } from "./components/Lobby.tsx";
@@ -138,11 +139,14 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const chooseLang = useCallback((l: string) => (l === "en" ? setOriginal(true) : pickLocale(matchLocale(l) ?? "en")), [pickLocale]);
   const [panelOpen, setPanelOpen] = useState(true);
   const selected = trail.at(-1) ?? null;
+  // The replayed step's card fills the panel until the reader picks another card.
+  const stepCard = route ? route.flow.steps[route.step].card : null;
+  const shown = selected ?? stepCard;
   // Keep the board visible beside the drawer, except on phones where the drawer covers it.
-  const inset = overlay && selected && panelOpen && vw > PHONE_MAX ? Math.min(panelW, vw * 0.55) : 0;
+  const inset = overlay && shown && panelOpen && vw > PHONE_MAX ? Math.min(panelW, vw * 0.55) : 0;
 
   const showing = useRef(false);
-  showing.current = !!selected && panelOpen;
+  showing.current = !!shown && panelOpen;
   const panelTimer = useRef<number>(0);
 
   const select = useCallback((id: string) => {
@@ -165,9 +169,9 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   // In drawer mode the first dismiss only hides the panel so the selected card's relations stay on the board.
   const dismiss = useCallback(() => {
     clearTimeout(panelTimer.current);
-    if (overlay && selected && panelOpen) setPanelOpen(false);
+    if (overlay && shown && panelOpen) setPanelOpen(false);
     else clear();
-  }, [overlay, selected, panelOpen, clear]);
+  }, [overlay, shown, panelOpen, clear]);
 
   // Fetch the deck's card text while the stack and shuffle play, so it is there by the time a card can be opened.
   useEffect(() => {
@@ -328,13 +332,22 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     window.addEventListener("pointerup", up);
   }, []);
 
+  const startReplay = useCallback(
+    (id: string) => {
+      setReplay({ id, step: 0 });
+      if (deck && lensesFor(deck).some((l) => l.id === "tree")) setLens("tree");
+      if (overlay) setPanelOpen(false);
+    },
+    [deck, overlay],
+  );
+
   const legendTypes = useMemo(() => {
     const used = new Set(deck?.edges.map((e) => e.type));
     return (Object.keys(EDGE_INFO) as EdgeType[]).filter((t) => used.has(t));
   }, [deck]);
   const ctx = useMemo(() => ({ hovered, setHovered, select }), [hovered, select]);
   const tabs = deck !== null && phase === "dealt";
-  const reading = !!selected && panelOpen;
+  const reading = !!shown && panelOpen;
   const page = analyticsPage({ source, card: selected });
 
   return (
@@ -397,6 +410,9 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
           <section className="left">
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />
+            {phase === "dealt" && !leaving && deck.flows && (
+              <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(step) => setReplay((r) => r && { ...r, step })} onClose={() => setReplay(null)} onDetails={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+            )}
             {legendTypes.length > 0 && (
               <div className={`legend-box${popover === "legend" ? " open" : ""}`}>
                 <button className="icon-btn legend-btn" aria-label={t.topbar.legend} aria-expanded={popover === "legend"} aria-controls="edge-legend" onClick={() => toggle("legend")}>ⓘ</button>
@@ -412,7 +428,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
             )}
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label={t.topbar.resizePanel} onPointerDown={startResize} />
-          <Panel deck={deck} phase={phase} card={selected ? cards.get(selected)! : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
+          <Panel deck={deck} phase={phase} card={shown ? cards.get(shown)! : null} step={route && shown === stepCard ? { n: route.step + 1, total: route.flow.steps.length, reason: route.flow.steps[route.step].reason, quote: route.flow.steps[route.step].quote } : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
         </main>
         )}
       </div>
