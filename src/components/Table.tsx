@@ -35,13 +35,10 @@ interface EdgePath {
   color: string;
   arrows: { x: number; y: number; angle: number }[];
   dashed?: boolean;
-  /** Step number drawn on the curve's midpoint. */
   badge?: { x: number; y: number; n: number };
-  /** Route steps since this curve was current: 0 is the live one. */
   age?: number;
 }
 
-// Only the live curve and the two before it are drawn as lines. Older ones keep a faint badge so the path stays countable, until it would crowd the board.
 const LINE_BY_AGE = [
   { opacity: 1, width: 3, halo: 9 },
   { opacity: 0.45, width: 2, halo: 5 },
@@ -51,7 +48,6 @@ const BADGE_OPACITY = [1, 0.7, 0.55];
 const OLD_BADGE_OPACITY = 0.3;
 const BADGE_HISTORY = 5;
 
-/** The replayed flow and the step it has reached (zero-based). */
 export interface Route {
   flow: Flow;
   step: number;
@@ -59,16 +55,13 @@ export interface Route {
 
 const ROUTE_COLOR = EDGE_INFO["routes-to"].color;
 
-// Quadratic bow between two cards, shared by selection edges and route curves. The bow is shaped from the centers, then each end is pulled back to its card's border so the line never crosses a face.
 function curve(a: CardBox, b: CardBox) {
   const mx = (a.x + b.x) / 2 - (b.y - a.y) * 0.12;
   const my = (a.y + b.y) / 2 + (b.x - a.x) * 0.12;
   const control = { x: mx, y: my };
   let from = clipToBorder(a, control);
   let to = clipToBorder(b, control);
-  // Overlapping cards can clip past each other; keep the center-to-center curve then.
   if ((to.x - from.x) * (b.x - a.x) + (to.y - from.y) * (b.y - a.y) <= 0) [from, to] = [a, b];
-  // Point and heading (from -> to) at parameter t; `toward` flips the heading to point back at `from`.
   const at = (t: number, toward = false) => {
     const u = 1 - t;
     const dx = 2 * u * (mx - from.x) + 2 * t * (to.x - mx);
@@ -94,7 +87,6 @@ const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: bo
         }
         const age = e.age ?? 0;
         const line = LINE_BY_AGE[age];
-        // The stagger delay is for the first draw; fading an existing curve on a step change must start at once.
         const fade = still ? { duration: 0 } : age === 0 ? transition : { duration: 0.3 };
         const draw = (width: number) => ({
           initial: { pathLength: 0, opacity: 0 },
@@ -139,7 +131,6 @@ interface Props {
   lens: Lens;
   phase: Phase;
   selected: string | null;
-  /** The example request being replayed, drawn over the board while nothing is selected. */
   route?: Route | null;
   flow: { in: boolean; out: boolean };
   onFlow: (update: (f: { in: boolean; out: boolean }) => { in: boolean; out: boolean }) => void;
@@ -235,7 +226,6 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
           ]),
         );
 
-  // A selection rearranges the board into rings, which the route does not survive, so the route shows only when nothing is selected.
   const routed = route && phase === "dealt" && !focus && !leaving ? route : null;
   const routeIds = useMemo(() => {
     if (!routed) return null;
@@ -294,7 +284,6 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
       const { d, at } = curve(centers(steps[i].card), centers(s.card));
       return { key: `route:${i}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 }, age: routed.step - 1 - i };
     });
-    // Later calls fan out from the playbook, so they are drawn only while it is the current step. On other steps they would bury the numbered path.
     const caller = steps[routed.step];
     const dashed = deck.cards.find((c) => c.id === caller.card)?.layer === "playbook"
       ? later.map((l) => ({ key: `later:${caller.card}>${l.card}`, d: curve(centers(caller.card), centers(l.card)).d, color: ROUTE_COLOR, arrows: [], dashed: true }))

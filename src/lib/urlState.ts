@@ -2,7 +2,6 @@ import type { Deck } from "../types.ts";
 import { lensesFor, type Lens } from "./layout.ts";
 import { matchLocale, type Locale } from "../i18n/locale.ts";
 
-/** `step` is zero-based here and one-based in the URL. */
 export type FlowState = { id: string; step: number };
 
 export type UrlState = { source: string; lens: Lens; card: string | null; lang: Locale | null; flow: FlowState | null };

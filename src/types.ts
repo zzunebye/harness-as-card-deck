@@ -57,7 +57,6 @@ export interface Stage {
 export interface FlowStep {
   card: string;
   reason: string;
-  /** Verbatim line from the card, shown with the reason. */
   quote?: string;
 }
 
@@ -71,7 +70,6 @@ export interface Flow {
   id: string;
   prompt: string;
   steps: FlowStep[];
-  /** Cards the steps call on afterwards, drawn dashed. */
   later: FlowLater[];
 }
 

@@ -545,7 +545,6 @@ export function offstage(poses: Map<string, Pose>, side: -1 | 1): Map<string, Po
 
 export const cardCenter = (p: Pose) => ({ x: p.x + CARD_W / 2, y: p.y + CARD_H / 2 });
 
-/** Center and half-size of a card as drawn: scale grows it about its center. */
 export const cardBox = (p: Pose) => ({ ...cardCenter(p), hw: (CARD_W * p.scale) / 2, hh: (CARD_H * p.scale) / 2 });
 export type CardBox = ReturnType<typeof cardBox>;
 

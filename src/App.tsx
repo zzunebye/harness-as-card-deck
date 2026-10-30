@@ -107,7 +107,6 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   // null is the lobby, where every deck sits as its own stack until one is picked.
   const [source, setSource] = useState<string | null>(initial?.source ?? null);
   const [trail, setTrail] = useState<string[]>(initialTrail);
-  // The example request being replayed. Named apart from `flow` below, which is the edge in/out toggle.
   const [replay, setReplay] = useState<FlowState | null>(initial?.flow ?? null);
   const [hovered, setHovered] = useState<string | null>(null);
   // Where the picked deck sat in the lobby. Only the Table that mounts for that pick starts from it.
@@ -137,10 +136,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const lang = !original && deck?.meta.langs.includes(locale) ? locale : "en";
   const pickLocale = useCallback((l: Locale) => (setOriginal(false), onChoice(l)), [onChoice]);
   const chooseLang = useCallback((l: string) => (l === "en" ? setOriginal(true) : pickLocale(matchLocale(l) ?? "en")), [pickLocale]);
-  // A flow deep link on a phone opens on the board, so the step bar is not hidden behind the drawer.
   const [panelOpen, setPanelOpen] = useState(!(initial?.flow && window.innerWidth <= OVERLAY_MAX));
   const selected = trail.at(-1) ?? null;
-  // The replayed step's card fills the panel until the reader picks another card.
   const stepCard = route ? route.flow.steps[route.step].card : null;
   const shown = selected ?? stepCard;
   // Keep the board visible beside the drawer, except on phones where the drawer covers it.
@@ -168,7 +165,6 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     setTrail([]);
   }, []);
   // In drawer mode the first dismiss only hides the panel so the selected card's relations stay on the board.
-  // Order: popover, then the selected card, then the replay. Esc and the panel close button share it.
   const dismiss = useCallback(() => {
     clearTimeout(panelTimer.current);
     if (popover) setPopover(null);

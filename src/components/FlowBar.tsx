@@ -8,7 +8,6 @@ interface Props {
   onStart(id: string): void;
   onStep(step: number): void;
   onClose(): void;
-  /** The panel is closed, so the step's reason is shown here and the card opens from a button. */
   onDetails?: () => void;
 }
 
