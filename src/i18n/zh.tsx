@@ -22,7 +22,7 @@ const zh: Messages = {
   harness: {
     title: "什么是 Harness？",
     docsNav: "Harness 参考资料",
-    intro: "Harness 是 AI agent 中除模型以外的一切。它提供工具，并管理模型看到的上下文。Claude Code 就是一个例子。本页的牌组是外层 harness：安装在编码 agent 之上、用来改变其工作方式的技能、playbook 和子 agent。",
+    intro: "Harness 是 AI agent 中除模型以外的一切。它提供工具，并管理模型看到的上下文。Claude Code 就是一个例子。本页的牌组是外层 harness，安装到编码 agent 中可以改变其工作方式。每副牌都是一组技能，pstack 还包含 playbook 和子 agent。",
     links: {
       howClaudeCodeWorks: "Claude Code 的工作原理",
       engineering: "面向编码 agent 用户的 Harness 工程",
