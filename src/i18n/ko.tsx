@@ -19,6 +19,16 @@ const ko: Messages = {
     pickDeck: "덱을 고르세요!",
     cardCount: (n) => `카드 ${n}장`,
   },
+  harness: {
+    title: "하네스란?",
+    docsNav: "하네스 참고 자료",
+    intro: "하네스는 AI 에이전트에서 모델을 뺀 나머지 전부입니다. 모델이 쓸 도구를 제공하고 모델이 보는 컨텍스트를 관리합니다. Claude Code가 그 예입니다. 이 페이지의 덱은 바깥쪽 하네스입니다. 코딩 에이전트 위에 설치해 동작 방식을 바꾸는 스킬, 플레이북, 서브에이전트 모음입니다.",
+    links: {
+      howClaudeCodeWorks: "Claude Code 작동 방식",
+      engineering: "코딩 에이전트 사용자를 위한 하네스 엔지니어링",
+      longRunning: "장기 실행 에이전트를 위한 효과적인 하네스",
+    },
+  },
   skills: {
     title: "스킬이란?",
     docsNav: "Claude 스킬 문서",

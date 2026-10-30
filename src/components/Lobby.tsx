@@ -1,7 +1,7 @@
 import type { Deck } from "../types.ts";
 import { backStyle } from "../lib/backs.ts";
 import { pileLayers, pileOffset, type Launch } from "../lib/layout.ts";
-import { SkillsFooter } from "./SkillsFooter.tsx";
+import { Explainers } from "./Explainers.tsx";
 import { useT } from "../i18n/index.ts";
 
 const layerStyle = (i: number, count: number): React.CSSProperties => {
@@ -14,7 +14,7 @@ export function Lobby({ decks, onPick }: { decks: Deck[]; onPick(id: string, fro
   return (
     <main className="lobby">
       <h2>{t.lobby.pickDeck}</h2>
-      <SkillsFooter compact />
+      <Explainers compact />
       <div className="lobby-body">
       <ul>
         {decks.map((d) => {
@@ -43,7 +43,7 @@ export function Lobby({ decks, onPick }: { decks: Deck[]; onPick(id: string, fro
           );
         })}
       </ul>
-      <SkillsFooter />
+      <Explainers />
       </div>
     </main>
   );

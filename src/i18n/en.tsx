@@ -21,6 +21,16 @@ export const en = {
     pickDeck: "Pick a deck!",
     cardCount: (n: number) => `${n} cards`,
   },
+  harness: {
+    title: "What is a harness?",
+    docsNav: "Harness reading",
+    intro: "A harness is everything in an AI agent except the model. It provides the tools and manages the context the model sees. Claude Code is one example. The decks on this page are outer harnesses: skills, playbooks, and subagents you install on top of a coding agent to change how it works.",
+    links: {
+      howClaudeCodeWorks: "How Claude Code works",
+      engineering: "Harness engineering for coding agent users",
+      longRunning: "Effective harnesses for long-running agents",
+    },
+  },
   skills: {
     title: "What is a skill?",
     docsNav: "Claude skills documentation",
