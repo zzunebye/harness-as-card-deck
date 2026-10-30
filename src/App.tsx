@@ -414,7 +414,10 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={() => trail.length > 0 && dismiss()} inset={inset} fast={vw <= PHONE_MAX} />
             {phase === "dealt" && !leaving && deck.flows && (
-              <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(stepIndex) => setReplay((r) => r && { ...r, stepIndex })} onClose={() => setReplay(null)} onDetails={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+              <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(stepIndex) => {
+                clear();
+                setReplay((r) => r && { ...r, stepIndex });
+              }} onClose={() => setReplay(null)} onDetails={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             )}
             {legendTypes.length > 0 && (
               <div className={`legend-box${popover === "legend" ? " open" : ""}`}>
