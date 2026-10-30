@@ -56,8 +56,10 @@ const zh: Messages = {
     zoomIn: "放大",
     zoomOut: "缩小",
     fit: "适应",
-    inflow: "流入",
-    outflow: "流出",
+    inflow: "In",
+    inflowLabel: "流入",
+    outflow: "Out",
+    outflowLabel: "流出",
   },
   flow: {
     heading: "示例请求",

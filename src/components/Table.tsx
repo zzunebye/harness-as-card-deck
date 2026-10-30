@@ -414,7 +414,7 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
           </button>
           <span className="zoom-sep" aria-hidden="true" />
           {(["in", "out"] as const).map((k) => (
-            <button key={k} className={`flow${flow[k] ? " on" : ""}`} aria-pressed={flow[k]} onClick={() => onFlow((f) => ({ ...f, [k]: !f[k] }))}>
+            <button key={k} className={`flow${flow[k] ? " on" : ""}`} aria-label={k === "in" ? t.table.inflowLabel : t.table.outflowLabel} aria-pressed={flow[k]} onClick={() => onFlow((f) => ({ ...f, [k]: !f[k] }))}>
               {k === "in" ? t.table.inflow : t.table.outflow}
             </button>
           ))}

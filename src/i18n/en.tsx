@@ -58,8 +58,10 @@ export const en = {
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
     fit: "Fit",
-    inflow: "Inflow",
-    outflow: "Outflow",
+    inflow: "In",
+    inflowLabel: "Inflow",
+    outflow: "Out",
+    outflowLabel: "Outflow",
   },
   flow: {
     heading: "Example request",

@@ -56,8 +56,10 @@ const ko: Messages = {
     zoomIn: "확대",
     zoomOut: "축소",
     fit: "맞춤",
-    inflow: "들어오는 선",
-    outflow: "나가는 선",
+    inflow: "In",
+    inflowLabel: "들어오는 선",
+    outflow: "Out",
+    outflowLabel: "나가는 선",
   },
   flow: {
     heading: "예시 요청",

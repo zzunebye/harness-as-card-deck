@@ -55,8 +55,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 .zoom-ctl button.flow { font-size: 13px; color: var(--muted); text-decoration: line-through; }
 .zoom-ctl button.flow.on { background: #24342c; color: var(--panel-ink); text-decoration: none; }
 .zoom-ctl button:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
-.flow-bar { position: absolute; left: 12px; bottom: 60px; z-index: 60; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; max-width: min(460px, calc(100% - 24px)); padding: 8px 10px; background: rgba(10,15,13,0.9); border: 1px solid #1c2a24; border-radius: 10px; color: var(--panel-ink); font-size: 13px; }
-.flow-bar.active { display: block; border-color: var(--gold); }
+.flow-bar { position: absolute; left: 12px; bottom: 60px; z-index: 60; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; width: fit-content; max-width: min(460px, calc(100% - 24px)); padding: 8px 10px; background: rgba(10,15,13,0.9); border: 1px solid #1c2a24; border-radius: 10px; color: var(--panel-ink); font-size: 13px; }
+.flow-bar.active { display: block; width: auto; border-color: var(--gold); }
 .flow-heading { color: var(--muted); font-size: 12px; }
 .flow-chip { padding: 4px 10px; border: 1px solid var(--gold); border-radius: 99px; background: transparent; color: var(--gold); font-size: 12.5px; text-transform: capitalize; }
 .flow-chip:hover { background: #2a2412; }
