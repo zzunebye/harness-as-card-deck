@@ -127,6 +127,10 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const overlay = vw <= OVERLAY_MAX;
 
   const deck = decks.find((d) => d.meta.id === source) ?? null;
+  const route = useMemo(() => {
+    const f = deck?.flows?.find((f) => f.id === replay?.id);
+    return f && replay ? { flow: f, step: replay.step } : null;
+  }, [deck, replay]);
   const cards = useMemo(() => new Map((deck?.cards ?? []).map((c) => [c.id, c])), [deck]);
   // A deck without translations in the interface language shows English bodies.
   const lang = !original && deck?.meta.langs.includes(locale) ? locale : "en";
@@ -392,7 +396,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         <main className={`stage${overlay ? " overlay" : ""}${reading ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
             <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
-            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />
+            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />
             {legendTypes.length > 0 && (
               <div className={`legend-box${popover === "legend" ? " open" : ""}`}>
                 <button className="icon-btn legend-btn" aria-label={t.topbar.legend} aria-expanded={popover === "legend"} aria-controls="edge-legend" onClick={() => toggle("legend")}>ⓘ</button>
