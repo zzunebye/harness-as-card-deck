@@ -34,7 +34,19 @@ interface EdgePath {
   dashed?: boolean;
   /** Step number drawn on the curve's midpoint. */
   badge?: { x: number; y: number; n: number };
+  /** Route steps since this curve was current: 0 is the live one. */
+  age?: number;
 }
+
+// Only the live curve and the two before it are drawn as lines. Older ones keep a faint badge so the path stays countable, until it would crowd the board.
+const LINE_BY_AGE = [
+  { opacity: 1, width: 3, halo: 9 },
+  { opacity: 0.45, width: 2, halo: 5 },
+  { opacity: 0.25, width: 1.5, halo: 4 },
+];
+const BADGE_OPACITY = [1, 0.7, 0.55];
+const OLD_BADGE_OPACITY = 0.3;
+const BADGE_HISTORY = 5;
 
 /** The replayed flow and the step it has reached (zero-based). */
 export interface Route {
@@ -72,11 +84,20 @@ const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: bo
             <motion.path key={e.key} d={e.d} fill="none" stroke={e.color} strokeWidth={2} strokeLinecap="round" strokeDasharray="6 8" initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} transition={transition} />
           );
         }
-        const draw = { initial: { pathLength: 0, opacity: 0 }, animate: { pathLength: 1, opacity: 1 }, transition };
+        const age = e.age ?? 0;
+        const line = LINE_BY_AGE[age];
+        // The stagger delay is for the first draw; fading an existing curve on a step change must start at once.
+        const fade = still ? { duration: 0 } : age === 0 ? transition : { duration: 0.3 };
+        const draw = (width: number) => ({
+          initial: { pathLength: 0, opacity: 0 },
+          animate: { pathLength: 1, opacity: line?.opacity ?? 0, strokeWidth: width },
+          transition: fade,
+        });
+        const badgeOpacity = BADGE_OPACITY[age] ?? (age < BADGE_HISTORY ? OLD_BADGE_OPACITY : 0);
         return (
           <g key={e.key}>
-            <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={9} strokeLinecap="round" strokeOpacity={0.18} {...draw} />
-            <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={3} strokeLinecap="round" strokeOpacity={0.9} {...draw} />
+            <motion.path d={e.d} fill="none" stroke={e.color} strokeLinecap="round" strokeOpacity={0.18} {...draw(line?.halo ?? 0)} />
+            <motion.path d={e.d} fill="none" stroke={e.color} strokeLinecap="round" strokeOpacity={0.9} {...draw(line?.width ?? 0)} />
             {e.arrows.map((a, k) => (
               <motion.path
                 key={k}
@@ -84,12 +105,12 @@ const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: bo
                 fill={e.color}
                 transform={`translate(${a.x},${a.y}) rotate(${a.angle})`}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={still ? { duration: 0 } : { delay: arrow + i * 0.012 }}
+                animate={{ opacity: line ? line.opacity : 0 }}
+                transition={still ? { duration: 0 } : age === 0 ? { delay: arrow + i * 0.012 } : { duration: 0.3 }}
               />
             ))}
             {e.badge && (
-              <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={still ? { duration: 0 } : { delay: arrow + i * 0.012 }}>
+              <motion.g initial={{ opacity: 0 }} animate={{ opacity: badgeOpacity }} transition={still ? { duration: 0 } : age === 0 ? { delay: arrow + i * 0.012 } : { duration: 0.3 }}>
                 <circle cx={e.badge.x} cy={e.badge.y} r={15} fill={ROUTE_COLOR} stroke="#0a0f0d" strokeWidth={3} />
                 <text x={e.badge.x} y={e.badge.y} textAnchor="middle" dominantBaseline="central" fontSize={17} fontWeight={700} fill="#0a0f0d">
                   {e.badge.n}
@@ -263,7 +284,7 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
     const { steps, later } = routed.flow;
     const numbered = steps.slice(1, routed.step + 1).map((s, i) => {
       const { d, at } = curve(centers(steps[i].card), centers(s.card));
-      return { key: `route:${steps[i].card}>${s.card}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 } };
+      return { key: `route:${steps[i].card}>${s.card}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 }, age: routed.step - 1 - i };
     });
     // Later calls fan out from the playbook, so they are drawn only while it is the current step. On other steps they would bury the numbered path.
     const caller = steps[routed.step];
