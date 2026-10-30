@@ -5,7 +5,10 @@ import {
   CARD_H,
   WORLD_H,
   WORLD_W,
+  cardBox,
   cardCenter,
+  clipToBorder,
+  type CardBox,
   WORLD_FRAME,
   arrange,
   pileArrangement,
@@ -56,10 +59,15 @@ export interface Route {
 
 const ROUTE_COLOR = EDGE_INFO["routes-to"].color;
 
-// Quadratic bow between two card centers, shared by selection edges and route curves.
-function curve(from: { x: number; y: number }, to: { x: number; y: number }) {
-  const mx = (from.x + to.x) / 2 - (to.y - from.y) * 0.12;
-  const my = (from.y + to.y) / 2 + (to.x - from.x) * 0.12;
+// Quadratic bow between two cards, shared by selection edges and route curves. The bow is shaped from the centers, then each end is pulled back to its card's border so the line never crosses a face.
+function curve(a: CardBox, b: CardBox) {
+  const mx = (a.x + b.x) / 2 - (b.y - a.y) * 0.12;
+  const my = (a.y + b.y) / 2 + (b.x - a.x) * 0.12;
+  const control = { x: mx, y: my };
+  let from = clipToBorder(a, control);
+  let to = clipToBorder(b, control);
+  // Overlapping cards can clip past each other; keep the center-to-center curve then.
+  if ((to.x - from.x) * (b.x - a.x) + (to.y - from.y) * (b.y - a.y) <= 0) [from, to] = [a, b];
   // Point and heading (from -> to) at parameter t; `toward` flips the heading to point back at `from`.
   const at = (t: number, toward = false) => {
     const u = 1 - t;
@@ -280,7 +288,7 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
 
   const routeEdges = useMemo<EdgePath[]>(() => {
     if (!routed) return [];
-    const centers = (id: string) => cardCenter(base.get(id)!);
+    const centers = (id: string) => cardBox(base.get(id)!);
     const { steps, later } = routed.flow;
     const numbered = steps.slice(1, routed.step + 1).map((s, i) => {
       const { d, at } = curve(centers(steps[i].card), centers(s.card));
@@ -296,7 +304,7 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
 
   const edges = useMemo(() => {
     if (!focus || !selected) return [];
-    const from = cardCenter(focus.poses.get(selected)!);
+    const from = cardBox(focus.poses.get(selected)!);
     const byOther = new Map<string, { in?: Edge; out?: Edge }>();
     for (const e of edgesShown) {
       const other = e.from === selected ? e.to : e.from;
@@ -305,7 +313,7 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
       byOther.set(other, pair);
     }
     return [...byOther].map(([other, { in: inEdge, out: outEdge }]) => {
-      const { d, at } = curve(from, cardCenter(focus.poses.get(other)!));
+      const { d, at } = curve(from, cardBox(focus.poses.get(other)!));
       const arrows = inEdge && outEdge ? [at(0.42, true), at(0.58, false)] : inEdge ? [at(0.5, true)] : [];
       const edge = (inEdge ?? outEdge)!;
       return { key: `${edge.from}>${edge.to}`, d, color: EDGE_INFO[edge.type].color, arrows };

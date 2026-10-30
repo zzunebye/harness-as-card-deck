@@ -544,3 +544,16 @@ export function offstage(poses: Map<string, Pose>, side: -1 | 1): Map<string, Po
 }
 
 export const cardCenter = (p: Pose) => ({ x: p.x + CARD_W / 2, y: p.y + CARD_H / 2 });
+
+/** Center and half-size of a card as drawn: scale grows it about its center. */
+export const cardBox = (p: Pose) => ({ ...cardCenter(p), hw: (CARD_W * p.scale) / 2, hh: (CARD_H * p.scale) / 2 });
+export type CardBox = ReturnType<typeof cardBox>;
+
+/** Where the ray from a box's center toward `target` leaves the box. Returns the center when the target is inside the box or on its center. */
+export function clipToBorder(box: CardBox, target: { x: number; y: number }): { x: number; y: number } {
+  const dx = target.x - box.x;
+  const dy = target.y - box.y;
+  const t = Math.min(dx === 0 ? Infinity : box.hw / Math.abs(dx), dy === 0 ? Infinity : box.hh / Math.abs(dy));
+  if (!Number.isFinite(t) || t >= 1) return { x: box.x, y: box.y };
+  return { x: box.x + dx * t, y: box.y + dy * t };
+}
