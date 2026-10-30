@@ -1,0 +1,36 @@
+[
+  {
+    "id": "bug-fix",
+    "prompt": "The login button sometimes returns a 500 error. Find the cause and fix it.",
+    "steps": [
+      {
+        "card": "router:poteto-mode",
+        "reason": "Classifies the request as a reported defect and matches it to the Bug fix playbook.",
+        "quote": "Match the task to a playbook below and open its full steps"
+      },
+      {
+        "card": "playbook:bug-fix",
+        "reason": "Copies the playbook's steps into a todo list before any task-specific work, and restates the goal to the user first.",
+        "quote": "Be scientific. Every shipped line traces to runtime evidence."
+      },
+      {
+        "card": "principle:fix-root-causes",
+        "reason": "Applies while debugging: trace the 500 back to where the system first went wrong instead of guarding the symptom.",
+        "quote": "When debugging, fix the fault, not the place where it surfaced."
+      },
+      {
+        "card": "principle:prove-it-works",
+        "reason": "Applies before declaring done: verify against the real artifact, not a proxy.",
+        "quote": "Verify every task output by checking the real thing directly."
+      }
+    ],
+    "later": [
+      { "card": "skill:how", "when": "step 2, map the affected subsystem" },
+      { "card": "skill:why", "when": "step 2, investigate the cause" },
+      { "card": "skill:architect", "when": "only if the fix crosses a function boundary" },
+      { "card": "skill:tdd", "when": "only if there is a cheap local test path" },
+      { "card": "principle:sequence-verifiable-units", "when": "step 5, commit in verified units" },
+      { "card": "playbook:opening-a-pr", "when": "step 6, ship the fix" }
+    ]
+  }
+]

@@ -54,6 +54,27 @@ export interface Stage {
   cards: string[];
 }
 
+export interface FlowStep {
+  card: string;
+  reason: string;
+  /** Verbatim line from the card, shown with the reason. */
+  quote?: string;
+}
+
+export interface FlowLater {
+  card: string;
+  when?: string;
+}
+
+/** One illustrative request and the cards an agent loads for it, in order. Not a trace. */
+export interface Flow {
+  id: string;
+  prompt: string;
+  steps: FlowStep[];
+  /** Cards the steps call on afterwards, drawn dashed. */
+  later: FlowLater[];
+}
+
 export interface Deck {
   /** Ordered workflow stages; only decks without meaningful layers set this. */
   stages?: Stage[];
@@ -65,6 +86,7 @@ export interface Deck {
   about: string;
   cards: Card[];
   edges: Edge[];
+  flows?: Flow[];
 }
 
 export const LAYER_INFO: Record<Layer, { suit: string; color: string }> = {
