@@ -240,13 +240,13 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
   const routeIds = useMemo(() => {
     if (!routed) return null;
     const steps = routed.flow.steps.map((s) => s.card);
-    return { visited: new Set(steps.slice(0, routed.step + 1)), current: steps[routed.step], listed: new Set([...steps, ...routed.flow.later.map((l) => l.card)]) };
+    return { visited: new Set(steps.slice(0, routed.step + 1)), current: steps[routed.step] };
   }, [routed]);
 
   const poses = leaving
     ? offstage(placed, -1)
     : routeIds
-      ? new Map([...placed].map(([id, p]) => [id, { ...p, dim: !routeIds.listed.has(id), muted: routeIds.listed.has(id) && !routeIds.visited.has(id) }]))
+      ? new Map([...placed].map(([id, p]) => [id, { ...p, dim: !routeIds.visited.has(id) }]))
       : placed;
 
   // Keyboard model: one tab stop on the board, arrow keys move to the nearest card in that direction.
