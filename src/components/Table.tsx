@@ -65,11 +65,18 @@ const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: bo
   return (
     <svg className="edges" width={WORLD_W} height={WORLD_H}>
       {edges.map((e, i) => {
-        const draw = { initial: { pathLength: 0, opacity: 0 }, animate: { pathLength: 1, opacity: 1 }, transition: still ? { duration: 0 } : { delay: wait + i * 0.012, duration: span } };
+        const transition = still ? { duration: 0 } : { delay: wait + i * 0.012, duration: span };
+        if (e.dashed) {
+          // Animating pathLength would overwrite strokeDasharray, so these fade in instead.
+          return (
+            <motion.path key={e.key} d={e.d} fill="none" stroke={e.color} strokeWidth={2} strokeLinecap="round" strokeDasharray="6 8" initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} transition={transition} />
+          );
+        }
+        const draw = { initial: { pathLength: 0, opacity: 0 }, animate: { pathLength: 1, opacity: 1 }, transition };
         return (
           <g key={e.key}>
             <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={9} strokeLinecap="round" strokeOpacity={0.18} {...draw} />
-            <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={3} strokeLinecap="round" strokeOpacity={0.9} strokeDasharray={e.dashed ? "10 9" : undefined} {...draw} />
+            <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={3} strokeLinecap="round" strokeOpacity={0.9} {...draw} />
             {e.arrows.map((a, k) => (
               <motion.path
                 key={k}
@@ -258,9 +265,9 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
       const { d, at } = curve(centers(steps[i].card), centers(s.card));
       return { key: `route:${steps[i].card}>${s.card}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 } };
     });
-    // Later calls come from the playbook, so there is nothing to draw until it has been loaded.
-    const caller = steps.slice(0, routed.step + 1).findLast((s) => deck.cards.find((c) => c.id === s.card)?.layer === "playbook");
-    const dashed = caller
+    // Later calls fan out from the playbook, so they are drawn only while it is the current step. On other steps they would bury the numbered path.
+    const caller = steps[routed.step];
+    const dashed = deck.cards.find((c) => c.id === caller.card)?.layer === "playbook"
       ? later.map((l) => ({ key: `later:${caller.card}>${l.card}`, d: curve(centers(caller.card), centers(l.card)).d, color: ROUTE_COLOR, arrows: [], dashed: true }))
       : [];
     return [...numbered, ...dashed];
