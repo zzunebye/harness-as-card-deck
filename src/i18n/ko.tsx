@@ -62,7 +62,7 @@ const ko: Messages = {
     outflowLabel: "나가는 선",
   },
   flow: {
-    heading: "예시 요청",
+    heading: "예시",
     prev: "이전 단계",
     next: "다음 단계",
     step: (n, total) => `${total}단계 중 ${n}단계`,

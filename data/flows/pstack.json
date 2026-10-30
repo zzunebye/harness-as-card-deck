@@ -54,7 +54,7 @@
       },
       {
         "card": "principle:prove-it-works",
-        "reason": "Playbook step 4. Reruns the original login repro on the same surface and checks the 500 is gone, instead of trusting that it compiles.",
+        "reason": "Playbook step 4. Verifies the fix against the real login flow, not a proxy, and checks the 500 is gone instead of trusting that it compiles.",
         "quote": "Do not infer from proxies, self-reports, or \"it compiles.\""
       },
       {
@@ -73,8 +73,13 @@
         "quote": "Run `/deslop` from `cursor-team-kit` over the diff before commit and `/no-comments` before review."
       },
       {
+        "card": "skill:no-comments",
+        "reason": "Run before review, as the opening-a-pr playbook says. This pass is what spawns the comment-sicko agent on the diff.",
+        "quote": "Spawn Comment Sicko. Act on accepted findings."
+      },
+      {
         "card": "agent:comment-sicko",
-        "reason": "The /no-comments pass spawns this agent to delete needless comments before review.",
+        "reason": "Reads the diff with a fresh eye and flags needless comments and workaround code for deletion.",
         "quote": "I hate comments. Feed me the parent scoped files or diff."
       }
     ],
