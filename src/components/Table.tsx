@@ -149,6 +149,8 @@ interface Props {
 }
 
 const NO_FIT: Fit = { scale: 1, x: 0, y: 0 };
+/** Share of a phone board's width the picked card fills when it comes forward. */
+const PHONE_FOCUS_WIDTH = 0.5;
 
 export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch, leaving, enter, onDeal, onBackground, inset, fast }: Props) {
   const t = useT();
@@ -195,7 +197,13 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
 
   const settled = phase === "dealt" && !focus ? arrangement : null;
   const fit = useMemo(() => (board ? fitFrame(settled?.frame ?? (phase === "dealt" ? WORLD_FRAME : pile.frame), board) : null), [board, settled?.frame, phase, pile.frame]);
-  const { view, live, panning, zoomBy, reset, reveal, bind } = usePanZoom(wrap, fit ?? NO_FIT, inset, `${lens}|${selected}|${phase}`);
+  // A phone fits the whole world into a narrow board, so a picked card would stay small: start zoomed in on it instead.
+  const home = useMemo(() => {
+    if (!fast || !focus || !selected || !fit || !board) return null;
+    const box = cardBox(focus.poses.get(selected)!);
+    return { k: (board.w * PHONE_FOCUS_WIDTH) / (box.hw * 2 * fit.scale), wx: box.x, wy: box.y };
+  }, [fast, focus, selected, fit, board]);
+  const { view, live, panning, zoomBy, reset, reveal, bind } = usePanZoom(wrap, fit ?? NO_FIT, inset, `${lens}|${selected}|${phase}|${board?.w}`, home);
 
   // Each card starts as the stack pose moved and scaled so the pile sits where the lobby deck was.
   const starts = useMemo(() => {
