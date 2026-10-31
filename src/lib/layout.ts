@@ -537,31 +537,6 @@ export function focusLayout(
   return { poses, related, inflow };
 }
 
-const FOCUS_PAD = 36;
-
-/**
- * Phone frame for a focused card: the box around it and the cards it links to, so a narrow board zooms in on them
- * instead of fitting the whole world. Never narrower than the focus card with room for a neighbour on each side.
- */
-export function focusFrame(poses: Map<string, Pose>, focusId: string, related: Set<string>): Rect {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const id of [focusId, ...related]) {
-    const p = poses.get(id);
-    if (!p) continue;
-    const b = cardBox(p);
-    x0 = Math.min(x0, b.x - b.hw);
-    x1 = Math.max(x1, b.x + b.hw);
-    y0 = Math.min(y0, b.y - b.hh);
-    y1 = Math.max(y1, b.y + b.hh);
-  }
-  const focus = cardBox(poses.get(focusId)!);
-  const minW = focus.hw * 2 * 1.6;
-  const minH = focus.hh * 2 * 1.3;
-  const w = Math.max(x1 - x0, minW) + FOCUS_PAD * 2;
-  const h = Math.max(y1 - y0, minH) + FOCUS_PAD * 2;
-  return { x: (x0 + x1) / 2 - w / 2, y: (y0 + y1) / 2 - h / 2, w, h };
-}
-
 /** The same poses pushed a full table width to one side: -1 is off the left edge, 1 off the right. */
 export function offstage(poses: Map<string, Pose>, side: -1 | 1): Map<string, Pose> {
   const shift = side * (WORLD_W + CARD_W * STACK_SCALE);

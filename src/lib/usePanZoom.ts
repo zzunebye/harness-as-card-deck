@@ -23,7 +23,14 @@ const DRAG_PX = 4;
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
 /** Wheel / pinch zoom about the pointer, drag pan, and +/-/fit controls for the fixed-size world. */
-export function usePanZoom(wrap: RefObject<HTMLElement | null>, fit: Fit, inset: number, resetKey: unknown) {
+/** A zoom `k` centred on world point (wx, wy): where the view lands each time the reset key changes. */
+export interface Home {
+  k: number;
+  wx: number;
+  wy: number;
+}
+
+export function usePanZoom(wrap: RefObject<HTMLElement | null>, fit: Fit, inset: number, resetKey: unknown, home: Home | null = null) {
   const [view, setView] = useState<View>(FIT_VIEW);
   const [live, setLive] = useState(false);
   const [panning, setPanning] = useState(false);
@@ -89,7 +96,17 @@ export function usePanZoom(wrap: RefObject<HTMLElement | null>, fit: Fit, inset:
     [wrap, commit],
   );
 
-  useEffect(reset, [resetKey, reset]);
+  const homeRef = useRef(home);
+  homeRef.current = home;
+  useEffect(() => {
+    const el = wrap.current;
+    const h = homeRef.current;
+    if (!el || !h) return reset();
+    const f = fitRef.current;
+    const k = clamp(h.k, 1, MAX_K);
+    const s = f.scale * k;
+    commit(k, (el.clientWidth - insetRef.current) / 2 - h.wx * s - f.x, el.clientHeight / 2 - h.wy * s - f.y);
+  }, [resetKey, reset, commit, wrap]);
 
   const wheelTimer = useRef(0);
   useEffect(() => {
