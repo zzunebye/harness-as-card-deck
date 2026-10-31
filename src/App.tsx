@@ -51,8 +51,6 @@ function saveLang(lang: Locale) {
 
 const OVERLAY_MAX = 1100;
 const PHONE_MAX = 640;
-// How long a phone waits after a card pick before the panel slides over the board: the fast spring and edge draw below have mostly landed by then.
-const PANEL_DELAY_MS = 450;
 const SLIDE_MS = 450;
 
 function useViewportWidth() {
@@ -150,14 +148,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const select = useCallback((id: string) => {
     setHovered(null);
     clearTimeout(panelTimer.current);
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // On phones the panel covers the board, so a first pick lets the cards and edges start moving before it slides over them.
-    if (window.innerWidth <= PHONE_MAX && !showing.current && !calm) {
-      setPanelOpen(false);
-      panelTimer.current = window.setTimeout(() => setPanelOpen(true), PANEL_DELAY_MS);
-    } else {
-      setPanelOpen(true);
-    }
+    // On phones the panel covers the board, so a pick from the board only selects and animates. The reader opens from the "read" button; a pick made inside an open reader keeps it open.
+    setPanelOpen(window.innerWidth > PHONE_MAX || showing.current);
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
   const clear = useCallback(() => {
