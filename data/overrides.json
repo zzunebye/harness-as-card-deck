@@ -297,5 +297,132 @@
         "utility": true
       }
     ]
+  },
+  "mattpocock": {
+    "layer": {},
+    "removeEdges": [
+      {
+        "from": "skill:triage",
+        "to": "skill:pr"
+      }
+    ],
+    "addEdges": [
+      {
+        "from": "skill:grill-with-docs",
+        "to": "skill:grilling"
+      },
+      {
+        "from": "skill:grill-with-docs",
+        "to": "skill:domain-modeling"
+      },
+      {
+        "from": "skill:grill-me",
+        "to": "skill:grilling"
+      },
+      {
+        "from": "skill:implement",
+        "to": "skill:tdd"
+      },
+      {
+        "from": "skill:implement",
+        "to": "skill:code-review"
+      },
+      {
+        "from": "skill:tdd",
+        "to": "skill:codebase-design"
+      },
+      {
+        "from": "skill:triage",
+        "to": "skill:grilling"
+      },
+      {
+        "from": "skill:triage",
+        "to": "skill:domain-modeling"
+      },
+      {
+        "from": "skill:improve-codebase-architecture",
+        "to": "skill:grilling"
+      },
+      {
+        "from": "skill:improve-codebase-architecture",
+        "to": "skill:domain-modeling"
+      },
+      {
+        "from": "skill:wayfinder",
+        "to": "skill:domain-modeling"
+      }
+    ],
+    "stages": [
+      {
+        "id": "sharpen",
+        "label": "Sharpen",
+        "cards": [
+          "skill:grill-with-docs",
+          "skill:grill-me",
+          "skill:grilling",
+          "skill:to-questionnaire",
+          "skill:research",
+          "skill:prototype"
+        ]
+      },
+      {
+        "id": "plan",
+        "label": "Plan",
+        "cards": [
+          "skill:to-spec",
+          "skill:to-tickets",
+          "skill:wayfinder",
+          "skill:triage"
+        ]
+      },
+      {
+        "id": "build",
+        "label": "Build",
+        "cards": [
+          "skill:implement",
+          "skill:implement-spec",
+          "skill:tdd",
+          "skill:diagnosing-bugs",
+          "skill:wizard"
+        ]
+      },
+      {
+        "id": "ship",
+        "label": "Ship",
+        "cards": [
+          "skill:code-review",
+          "skill:pr"
+        ]
+      },
+      {
+        "id": "improve",
+        "label": "Improve",
+        "cards": [
+          "skill:retro",
+          "skill:improve-codebase-architecture"
+        ]
+      },
+      {
+        "id": "vocabulary",
+        "label": "Vocabulary",
+        "cards": [
+          "skill:domain-modeling",
+          "skill:codebase-design"
+        ]
+      },
+      {
+        "id": "meta",
+        "label": "Meta",
+        "cards": [
+          "router:ask-matt",
+          "skill:setup-matt-pocock-skills",
+          "skill:handoff",
+          "skill:wait-what",
+          "skill:teach",
+          "skill:writing-for-agents"
+        ],
+        "utility": true
+      }
+    ]
   }
 }

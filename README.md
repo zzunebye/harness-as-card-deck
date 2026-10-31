@@ -13,6 +13,7 @@ Interactive card decks of AI coding-agent harnesses. Each harness is a stack of 
 | superpowers | [obra/superpowers](https://github.com/obra/superpowers) | One skill card per skill under `skills/` |
 | anthropic | [anthropics/skills](https://github.com/anthropics/skills) | One skill card per Apache-2.0 skill under `skills/`. `docx`, `pdf`, `pptx`, and `xlsx` are source-available and not included |
 | compound | [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) | One skill card per skill under `skills/`. The per-skill reference agents are not carded |
+| mattpocock | [mattpocock/skills](https://github.com/mattpocock/skills) | One skill card per skill `plugin.json` lists, with `ask-matt` as the router. `misc/` and `in-progress/` are not included |
 
 Each deck uses the commit pinned in `vendor/<id>.sha`.
 
@@ -28,4 +29,4 @@ There are two lenses, Layer and Route Tree. Click a card to pull its neighbours 
 
 ## License
 
-The code in this repository is MIT-licensed, see [LICENSE](LICENSE). The harness content it renders is MIT-licensed by its authors (see `public/pstack-LICENSE.txt`, `public/gstack-LICENSE.txt`, `public/superpowers-LICENSE.txt`, and `public/compound-LICENSE.txt`), except the anthropic deck, which is Apache-2.0 (see `public/anthropic-LICENSE.txt`).
+The code in this repository is MIT-licensed, see [LICENSE](LICENSE). The harness content it renders is MIT-licensed by its authors (see `public/pstack-LICENSE.txt`, `public/gstack-LICENSE.txt`, `public/superpowers-LICENSE.txt`, `public/compound-LICENSE.txt`, and `public/mattpocock-LICENSE.txt`), except the anthropic deck, which is Apache-2.0 (see `public/anthropic-LICENSE.txt`).

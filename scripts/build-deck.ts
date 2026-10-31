@@ -162,6 +162,25 @@ const SOURCES: Source[] = [
       return { cards, version: JSON.parse(read("plugin.json")).version };
     },
   },
+  {
+    id: "mattpocock",
+    label: "mattpocock skills",
+    repo: "mattpocock/skills",
+    subdir: "",
+    license: "MIT",
+    collect(read) {
+      // plugin.json lists the promoted skills. misc/ and in-progress/ stay out.
+      const plugin = JSON.parse(read("plugin.json"));
+      const cards = (plugin.skills as string[]).map((s): RawCard => {
+        const path = `${s.replace(/^\.\//, "")}/SKILL.md`;
+        const { data, body } = splitFrontmatter(read(path));
+        const name = path.split("/").at(-2)!;
+        const layer: Layer = name === "ask-matt" ? "router" : "skill";
+        return { id: `${layer}:${name}`, layer, name, title: heading(body) ?? name, description: String(data.description ?? "").trim(), path, body };
+      });
+      return { cards, version: plugin.version };
+    },
+  },
 ];
 
 function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Record<string, Bodies> } {
