@@ -14,6 +14,7 @@ import {
   pileArrangement,
   STACK_CTA,
   fitFrame,
+  focusFrame,
   focusLayout,
   offstage,
   CARD_W,
@@ -194,7 +195,12 @@ export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch
   );
 
   const settled = phase === "dealt" && !focus ? arrangement : null;
-  const fit = useMemo(() => (board ? fitFrame(settled?.frame ?? (phase === "dealt" ? WORLD_FRAME : pile.frame), board) : null), [board, settled?.frame, phase, pile.frame]);
+  // A phone board is too narrow for the whole world, so a picked card's frame closes in on it and its links.
+  const focused = useMemo(() => (fast && focus && selected ? focusFrame(focus.poses, selected, focus.related) : null), [fast, focus, selected]);
+  const fit = useMemo(
+    () => (board ? fitFrame(focused ?? settled?.frame ?? (phase === "dealt" ? WORLD_FRAME : pile.frame), board) : null),
+    [board, focused, settled?.frame, phase, pile.frame],
+  );
   const { view, live, panning, zoomBy, reset, reveal, bind } = usePanZoom(wrap, fit ?? NO_FIT, inset, `${lens}|${selected}|${phase}`);
 
   // Each card starts as the stack pose moved and scaled so the pile sits where the lobby deck was.
