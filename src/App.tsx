@@ -51,8 +51,6 @@ function saveLang(lang: Locale) {
 
 const OVERLAY_MAX = 1100;
 const PHONE_MAX = 640;
-// How long a phone waits after a card pick before the panel slides over the board: the fast spring and edge draw below have mostly landed by then.
-const PANEL_DELAY_MS = 450;
 const SLIDE_MS = 450;
 
 function useViewportWidth() {
@@ -150,16 +148,20 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const select = useCallback((id: string) => {
     setHovered(null);
     clearTimeout(panelTimer.current);
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // On phones the panel covers the board, so a first pick lets the cards and edges start moving before it slides over them.
-    if (window.innerWidth <= PHONE_MAX && !showing.current && !calm) {
-      setPanelOpen(false);
-      panelTimer.current = window.setTimeout(() => setPanelOpen(true), PANEL_DELAY_MS);
-    } else {
-      setPanelOpen(true);
-    }
+    // On phones the panel covers the board, so a pick from the board only selects and animates. The reader opens from the "read" button; a pick made inside an open reader keeps it open.
+    setPanelOpen(window.innerWidth > PHONE_MAX || showing.current);
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
+  // Overlay widths push one history entry per trail step (marked `pushed`, with the trail it grew from in `from`), so Back peels the same step. An entry written by replaceState, such as a card picked at desktop width before the window narrowed, or one pushed by a breadcrumb jump, is not preceded by this trail minus its last card: drop the step by hand rather than leave the site.
+  const replaceNext = useRef(false);
+  const back = useCallback(() => {
+    if (history.state?.pushed && history.state.trail?.length === trail.length && history.state.from === trail.slice(0, -1).join("|")) history.back();
+    else {
+      // The shortened trail rewrites the entry we are on; pushing would make the next Back restore the longer trail.
+      replaceNext.current = true;
+      setTrail((t) => t.slice(0, -1));
+    }
+  }, [trail]);
   const clear = useCallback(() => {
     clearTimeout(panelTimer.current);
     setTrail([]);
@@ -242,7 +244,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     const full = location.href;
     const base = serializeUrlState({ ...initial, card: null, lang: choice }, { source: null, lens: null });
     history.replaceState({ trail: [] }, "", location.pathname + withCampaign(base));
-    history.pushState({ trail: initialTrail }, "", full);
+    history.pushState({ trail: initialTrail, pushed: true, from: "" }, "", full);
   }, []);
 
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
@@ -252,15 +254,20 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     const url = location.pathname + withCampaign(search);
     const key = trail.join("|");
     const trailChanged = key !== trailKey.current;
+    const from = trailKey.current;
     trailKey.current = key;
+    const replaceOnly = replaceNext.current;
+    replaceNext.current = false;
     // Overlay widths push per trail step so Back peels cards off the panel. The trail is cleared before a deck swap, so a leaving deck must not push.
     if (id !== urlSource.current) {
       urlSource.current = id;
       history.pushState({ trail }, "", url);
-    } else if (trailChanged && overlay && !leaving) {
-      history.pushState({ trail }, "", url);
+    } else if (trailChanged && overlay && !leaving && !replaceOnly) {
+      history.pushState({ trail, pushed: true, from }, "", url);
     } else {
-      history.replaceState({ trail }, "", url);
+      // Rewriting the entry we are on keeps its mark unless the trail itself changed under it.
+      const keep = !trailChanged && !!history.state?.pushed;
+      history.replaceState({ trail, pushed: keep, from: keep ? history.state.from : undefined }, "", url);
     }
   }, [lens, selected, phase, deck, choice, trail, leaving, overlay, replay]);
 
@@ -279,7 +286,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         setHovered(null);
         setTrail(nextTrail);
         setReplay(state?.flow ?? null);
-        setPanelOpen(nextTrail.length > 0);
+        // On phones a step back must not open the reader; it stays as it was.
+        setPanelOpen(nextTrail.length > 0 && (window.innerWidth > PHONE_MAX || showing.current));
         return;
       }
       clearTimeout(dealTimer.current);
@@ -411,7 +419,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         ) : (
         <main className={`stage${overlay ? " overlay" : ""}${reading ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
-            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onBack={back} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={() => trail.length > 0 && dismiss()} inset={inset} fast={vw <= PHONE_MAX} />
             {phase === "dealt" && !leaving && deck.flows && (
               <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(stepIndex) => {
