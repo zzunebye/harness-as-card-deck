@@ -153,9 +153,14 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
   // Overlay widths push one history entry per trail step (marked `pushed`), so Back peels the same step. An entry written by replaceState, such as a card picked at desktop width before the window narrowed, has no predecessor: drop the step by hand rather than leave the site.
+  const replaceNext = useRef(false);
   const back = useCallback(() => {
     if (history.state?.pushed && history.state.trail?.length === trail.length) history.back();
-    else setTrail((t) => t.slice(0, -1));
+    else {
+      // The shortened trail rewrites the entry we are on; pushing would make the next Back restore the longer trail.
+      replaceNext.current = true;
+      setTrail((t) => t.slice(0, -1));
+    }
   }, [trail]);
   const clear = useCallback(() => {
     clearTimeout(panelTimer.current);
@@ -250,11 +255,13 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     const key = trail.join("|");
     const trailChanged = key !== trailKey.current;
     trailKey.current = key;
+    const replaceOnly = replaceNext.current;
+    replaceNext.current = false;
     // Overlay widths push per trail step so Back peels cards off the panel. The trail is cleared before a deck swap, so a leaving deck must not push.
     if (id !== urlSource.current) {
       urlSource.current = id;
       history.pushState({ trail }, "", url);
-    } else if (trailChanged && overlay && !leaving) {
+    } else if (trailChanged && overlay && !leaving && !replaceOnly) {
       history.pushState({ trail, pushed: true }, "", url);
     } else {
       // Rewriting the entry we are on keeps its mark unless the trail itself changed under it.
