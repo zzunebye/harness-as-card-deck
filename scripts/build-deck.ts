@@ -5,7 +5,7 @@ import { parse as parseYaml } from "yaml";
 import { createResolver } from "../src/lib/refs.ts";
 import { extractRefs } from "../src/lib/markdown.ts";
 import { assertEdgeTypes, edgeFromAdd, makeEdge } from "../src/lib/edges.ts";
-import { LAYER_ORDER, type Bodies, type Card, type Deck, type Edge, type Layer, type Stage, type Translations } from "../src/types.ts";
+import { LAYER_ORDER, type Bodies, type Card, type Deck, type Edge, type Flow, type Layer, type Stage, type Translations } from "../src/types.ts";
 import { triage } from "./translations.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -239,6 +239,15 @@ function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Recor
     }
   }
 
+  const flowFile = join(ROOT, "data/flows", `${src.id}.json`);
+  const flows: Flow[] | undefined = existsSync(flowFile) ? JSON.parse(readFileSync(flowFile, "utf8")) : undefined;
+  for (const f of flows ?? []) {
+    if (!f.steps.length) throw new Error(`${src.id} flow ${f.id}: no steps`);
+    for (const id of [...f.steps.map((s) => s.card), ...f.later.map((l) => l.card)]) {
+      if (!byId.has(id)) throw new Error(`${src.id} flow ${f.id}: unknown card ${id}`);
+    }
+  }
+
   const english: Bodies = Object.fromEntries(cards.map((c) => [c.id, c.body]));
   const translated: Record<string, Bodies> = {};
   const transDir = join(ROOT, "data/translations");
@@ -257,6 +266,7 @@ function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Recor
     about: readFileSync(join(ROOT, "data/about", `${src.id}.md`), "utf8").trim(),
     cards: cards.map(({ body: _, ...card }): Card => card),
     edges: [...edges.values()],
+    ...(flows && { flows }),
   };
   return { deck, bodies: english, translated };
 }

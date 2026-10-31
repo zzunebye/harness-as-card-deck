@@ -1,0 +1,88 @@
+[
+  {
+    "id": "bug-fix",
+    "prompt": "The login button sometimes returns a 500 error. Find the cause and fix it.",
+    "steps": [
+      {
+        "card": "router:poteto-mode",
+        "reason": "Matches the request to the Bug fix playbook, then copies that playbook's steps into its todo list.",
+        "quote": "A reported defect to reproduce, root-cause, and fix with runtime evidence."
+      },
+      {
+        "card": "playbook:bug-fix",
+        "reason": "Sets the working style: the agent stays the lead who plans, reviews and verifies, and delegates the investigation and the fix.",
+        "quote": "Delegate investigation and the fix to subagents, stay in the lead."
+      },
+      {
+        "card": "skill:in-your-own-words",
+        "reason": "Before any work, tells the user the goal (stop the intermittent 500) and the smallest change it expects to make. It does not wait for confirmation.",
+        "quote": "Restate in your own words what you think the user's goals are and what problem they're trying to solve."
+      },
+      {
+        "card": "principle:fix-root-causes",
+        "reason": "Commits to finding what produced the bad state instead of hiding the 500 behind a try/catch or a retry.",
+        "quote": "When debugging, fix the fault, not the place where it surfaced."
+      },
+      {
+        "card": "skill:how",
+        "reason": "Playbook step 2. Maps how the login handler, session and database path work, to seed the list of candidate causes. Runs in read-only subagents.",
+        "quote": "Explore the codebase to answer \"how does X work?\" questions."
+      },
+      {
+        "card": "skill:why",
+        "reason": "Playbook step 2. Checks git history and PRs for a recent change to the login path, in case this is a regression.",
+        "quote": "Investigate the motivation and intent behind code."
+      },
+      {
+        "card": "skill:architect",
+        "reason": "Playbook step 3, only if the fix crosses a function boundary. Sketches types and signatures before any code is written.",
+        "quote": "Design it twice."
+      },
+      {
+        "card": "principle:exhaust-the-design-space",
+        "reason": "The idea behind architect's \"design it twice\": compare structurally different shapes for the fix before committing to one."
+      },
+      {
+        "card": "skill:arena",
+        "reason": "Also inside architect: parallel candidates sketch the fix, a judge from another model family scores them, and the lead grafts the best parts into one base.",
+        "quote": "Every candidate gets the same prompt, so the prompt is the contract."
+      },
+      {
+        "card": "agent:poteto-agent",
+        "reason": "Playbook step 3. A background delegate writes the fix against the chosen sketch, with the user's goal restated in its brief.",
+        "quote": "You are one of its delegates."
+      },
+      {
+        "card": "principle:prove-it-works",
+        "reason": "Playbook step 4. Verifies the fix against the real login flow, not a proxy, and checks the 500 is gone instead of trusting that it compiles.",
+        "quote": "Do not infer from proxies, self-reports, or \"it compiles.\""
+      },
+      {
+        "card": "skill:tdd",
+        "reason": "Playbook step 5, when a cheap local test exists. Writes a failing regression test, watches it fail for the right reason, then fixes.",
+        "quote": "Write the failing test first."
+      },
+      {
+        "card": "principle:sequence-verifiable-units",
+        "reason": "Orders the commits so the failing test lands before the fix, and each commit is checked before the next.",
+        "quote": "The canonical shape is the failing test first, then the fix on top."
+      },
+      {
+        "card": "playbook:opening-a-pr",
+        "reason": "Playbook step 6. Cleans the diff, opens a ready PR with a Why, Scope and Verification body, and does not babysit it.",
+        "quote": "Run `/deslop` from `cursor-team-kit` over the diff before commit and `/no-comments` before review."
+      },
+      {
+        "card": "skill:no-comments",
+        "reason": "Run before review, as the opening-a-pr playbook says. This pass is what spawns the comment-sicko agent on the diff.",
+        "quote": "Spawn Comment Sicko. Act on accepted findings."
+      },
+      {
+        "card": "agent:comment-sicko",
+        "reason": "Reads the diff with a fresh eye and flags needless comments and workaround code for deletion.",
+        "quote": "I hate comments. Feed me the parent scoped files or diff."
+      }
+    ],
+    "later": []
+  }
+]
