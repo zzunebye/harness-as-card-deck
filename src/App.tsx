@@ -152,6 +152,11 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     setPanelOpen(window.innerWidth > PHONE_MAX || showing.current);
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
+  // Overlay widths push one history entry per trail step, so Back peels the same step. Without a matching entry, drop it by hand rather than leave the site.
+  const back = useCallback(() => {
+    if (history.state?.trail?.length === trail.length) history.back();
+    else setTrail((t) => t.slice(0, -1));
+  }, [trail]);
   const clear = useCallback(() => {
     clearTimeout(panelTimer.current);
     setTrail([]);
@@ -271,7 +276,8 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         setHovered(null);
         setTrail(nextTrail);
         setReplay(state?.flow ?? null);
-        setPanelOpen(nextTrail.length > 0);
+        // On phones a step back must not open the reader; it stays as it was.
+        setPanelOpen(nextTrail.length > 0 && (window.innerWidth > PHONE_MAX || showing.current));
         return;
       }
       clearTimeout(dealTimer.current);
@@ -403,7 +409,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         ) : (
         <main className={`stage${overlay ? " overlay" : ""}${reading ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
-            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onBack={back} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
             <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={() => trail.length > 0 && dismiss()} inset={inset} fast={vw <= PHONE_MAX} />
             {phase === "dealt" && !leaving && deck.flows && (
               <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(stepIndex) => {

@@ -44,6 +44,7 @@ const ko: Messages = {
     path: "경로",
     read: "읽기 ▸",
     clear: "지우기",
+    back: "이전 카드로",
   },
   toc: { label: "목차" },
   reading: { settings: "읽기 설정", size: "크기", font: "글꼴" },

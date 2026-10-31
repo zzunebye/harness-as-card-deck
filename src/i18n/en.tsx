@@ -46,6 +46,7 @@ export const en = {
     path: "Path",
     read: "read ▸",
     clear: "clear",
+    back: "Back to previous card",
   },
   toc: { label: "Table of contents" },
   reading: { settings: "Reading settings", size: "Size", font: "Font" },

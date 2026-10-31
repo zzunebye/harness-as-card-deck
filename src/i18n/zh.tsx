@@ -44,6 +44,7 @@ const zh: Messages = {
     path: "路径",
     read: "阅读 ▸",
     clear: "清除",
+    back: "返回上一张卡片",
   },
   toc: { label: "目录" },
   reading: { settings: "阅读设置", size: "字号", font: "字体" },
