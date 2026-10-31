@@ -6,6 +6,7 @@ export const BACKS: Record<string, { suit: string; color: string }> = {
   superpowers: { suit: "♣", color: "#1d5a3a" },
   anthropic: { suit: "♥", color: "#4a2a12" },
   compound: { suit: "✦", color: "#3a1d5a" },
+  mattpocock: { suit: "★", color: "#14505a" },
 };
 
 export const backStyle = (deckId: string) => {
