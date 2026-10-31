@@ -6,7 +6,7 @@
   "scripts": {
     "fetch": "sh scripts/fetch-pstack.sh && sh scripts/fetch-gstack.sh && sh scripts/fetch-superpowers.sh && sh scripts/fetch-anthropic.sh && sh scripts/fetch-compound.sh && sh scripts/fetch-mattpocock.sh",
     "deck": "node scripts/build-deck.ts",
-    "check": "tsc --noEmit && node --test scripts/edges.test.ts scripts/urlState.test.ts scripts/translate.test.ts scripts/search.test.ts scripts/headings.test.ts scripts/headingComponents.test.ts scripts/locale.test.ts scripts/about.test.ts scripts/layout.test.ts",
+    "check": "tsc --noEmit && node --test scripts/edges.test.ts scripts/urlState.test.ts scripts/translate.test.ts scripts/search.test.ts scripts/sourceLinks.test.ts scripts/headings.test.ts scripts/headingComponents.test.ts scripts/locale.test.ts scripts/about.test.ts scripts/layout.test.ts",
     "dev": "npm run deck && vite",
     "build": "npm run deck && npm run check && vite build",
     "translate": "node scripts/translate.ts",

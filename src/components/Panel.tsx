@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { LANGUAGES, LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
 import { createResolver } from "../lib/refs.ts";
 import { extractHeadings, remarkDropComments, remarkRefs } from "../lib/markdown.ts";
+import { resolveSourceLink, sourceUrl } from "../lib/sourceLinks.ts";
 import { useBodies } from "../lib/bodies.ts";
 import { useInteraction } from "../context.ts";
 import type { Phase } from "./Table.tsx";
@@ -113,12 +114,12 @@ export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck
           return lang || text.includes("\n") ? <CodeBlock code={text.replace(/\n$/, "")} lang={lang ?? "text"} /> : <code>{children}</code>;
         },
         a: ({ href, children }: ComponentProps<"a">) => (
-          <a href={href} target="_blank" rel="noreferrer">
+          <a href={resolveSourceLink(href, deck.meta, card?.path)} target="_blank" rel="noreferrer">
             {children}
           </a>
         ),
     } as unknown as Components;
-  }, [headings]);
+  }, [headings, deck.meta, card?.path]);
 
   const remarkPlugins = useMemo(() => (card ? [remarkGfm, remarkDropComments, remarkRefs(resolver, card.id)] : [remarkGfm, remarkDropComments]), [resolver, card]);
 
@@ -177,7 +178,7 @@ export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck
             ✕
           </button>
         </div>
-        <a className="src" target="_blank" rel="noreferrer" href={`https://github.com/${deck.meta.repo}/blob/${deck.meta.sha}/${[deck.meta.subdir, card.path].filter(Boolean).join("/")}`}>
+        <a className="src" target="_blank" rel="noreferrer" href={sourceUrl(deck.meta, card.path)}>
           {card.path}
         </a>
         <p className="stat">
