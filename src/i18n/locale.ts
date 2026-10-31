@@ -1,5 +1,7 @@
 export const LOCALES = { en: "English", ko: "한국어", zh: "简体中文" } as const;
 export type Locale = keyof typeof LOCALES;
+/** Shown beside the picked language only, not in the native option list. */
+export const FLAGS: Record<Locale, string> = { en: "🇺🇸", ko: "🇰🇷", zh: "🇨🇳" };
 
 const TRADITIONAL_ZH = /^zh-(hant|tw|hk|mo)\b/;
 
