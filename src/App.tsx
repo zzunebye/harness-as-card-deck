@@ -152,10 +152,10 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     setPanelOpen(window.innerWidth > PHONE_MAX || showing.current);
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
-  // Overlay widths push one history entry per trail step (marked `pushed`), so Back peels the same step. An entry written by replaceState, such as a card picked at desktop width before the window narrowed, has no predecessor: drop the step by hand rather than leave the site.
+  // Overlay widths push one history entry per trail step (marked `pushed`, with the trail it grew from in `from`), so Back peels the same step. An entry written by replaceState, such as a card picked at desktop width before the window narrowed, or one pushed by a breadcrumb jump, is not preceded by this trail minus its last card: drop the step by hand rather than leave the site.
   const replaceNext = useRef(false);
   const back = useCallback(() => {
-    if (history.state?.pushed && history.state.trail?.length === trail.length) history.back();
+    if (history.state?.pushed && history.state.trail?.length === trail.length && history.state.from === trail.slice(0, -1).join("|")) history.back();
     else {
       // The shortened trail rewrites the entry we are on; pushing would make the next Back restore the longer trail.
       replaceNext.current = true;
@@ -244,7 +244,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     const full = location.href;
     const base = serializeUrlState({ ...initial, card: null, lang: choice }, { source: null, lens: null });
     history.replaceState({ trail: [] }, "", location.pathname + withCampaign(base));
-    history.pushState({ trail: initialTrail, pushed: true }, "", full);
+    history.pushState({ trail: initialTrail, pushed: true, from: "" }, "", full);
   }, []);
 
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
@@ -254,6 +254,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     const url = location.pathname + withCampaign(search);
     const key = trail.join("|");
     const trailChanged = key !== trailKey.current;
+    const from = trailKey.current;
     trailKey.current = key;
     const replaceOnly = replaceNext.current;
     replaceNext.current = false;
@@ -262,10 +263,11 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
       urlSource.current = id;
       history.pushState({ trail }, "", url);
     } else if (trailChanged && overlay && !leaving && !replaceOnly) {
-      history.pushState({ trail, pushed: true }, "", url);
+      history.pushState({ trail, pushed: true, from }, "", url);
     } else {
       // Rewriting the entry we are on keeps its mark unless the trail itself changed under it.
-      history.replaceState({ trail, pushed: !trailChanged && !!history.state?.pushed }, "", url);
+      const keep = !trailChanged && !!history.state?.pushed;
+      history.replaceState({ trail, pushed: keep, from: keep ? history.state.from : undefined }, "", url);
     }
   }, [lens, selected, phase, deck, choice, trail, leaving, overlay, replay]);
 
