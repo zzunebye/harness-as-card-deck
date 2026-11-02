@@ -30,3 +30,9 @@ test("a URL pick beats the stored pick, and no pick is null", () => {
   assert.equal(chosenLocale("?lang=xx", "xx"), null);
   assert.equal(chosenLocale("", null), null);
 });
+
+test("Japanese tags match ja", () => {
+  assert.equal(matchLocale("ja"), "ja");
+  assert.equal(matchLocale("ja-JP"), "ja");
+  assert.equal(systemLocale(["fr", "ja-JP"]), "ja");
+});
