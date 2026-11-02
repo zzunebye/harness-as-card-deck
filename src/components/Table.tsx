@@ -1,11 +1,14 @@
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { EDGE_INFO, LAYER_INFO, LAYER_ORDER, type Deck, type Edge } from "../types.ts";
+import { EDGE_INFO, LAYER_INFO, LAYER_ORDER, type Deck, type Edge, type Flow } from "../types.ts";
 import {
   CARD_H,
   WORLD_H,
   WORLD_W,
+  cardBox,
   cardCenter,
+  clipToBorder,
+  type CardBox,
   WORLD_FRAME,
   arrange,
   pileArrangement,
@@ -31,6 +34,42 @@ interface EdgePath {
   d: string;
   color: string;
   arrows: { x: number; y: number; angle: number }[];
+  dashed?: boolean;
+  badge?: { x: number; y: number; n: number };
+  age?: number;
+}
+
+const LINE_BY_AGE = [
+  { opacity: 1, width: 3, halo: 9 },
+  { opacity: 0.45, width: 2, halo: 5 },
+  { opacity: 0.25, width: 1.5, halo: 4 },
+];
+const BADGE_OPACITY = [1, 0.7, 0.55];
+const OLD_BADGE_OPACITY = 0.3;
+const BADGE_HISTORY = 5;
+
+export interface Route {
+  flow: Flow;
+  stepIndex: number;
+}
+
+const ROUTE_COLOR = EDGE_INFO["routes-to"].color;
+
+function curve(a: CardBox, b: CardBox) {
+  const mx = (a.x + b.x) / 2 - (b.y - a.y) * 0.12;
+  const my = (a.y + b.y) / 2 + (b.x - a.x) * 0.12;
+  const control = { x: mx, y: my };
+  let from = clipToBorder(a, control);
+  let to = clipToBorder(b, control);
+  if ((to.x - from.x) * (b.x - a.x) + (to.y - from.y) * (b.y - a.y) <= 0) [from, to] = [a, b];
+  const at = (t: number, toward = false) => {
+    const u = 1 - t;
+    const dx = 2 * u * (mx - from.x) + 2 * t * (to.x - mx);
+    const dy = 2 * u * (my - from.y) + 2 * t * (to.y - my);
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI + (toward ? 180 : 0);
+    return { x: u * u * from.x + 2 * u * t * mx + t * t * to.x, y: u * u * from.y + 2 * u * t * my + t * t * to.y, angle };
+  };
+  return { d: `M${from.x},${from.y} Q${mx},${my} ${to.x},${to.y}`, at };
 }
 
 const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: boolean }) {
@@ -39,11 +78,26 @@ const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: bo
   return (
     <svg className="edges" width={WORLD_W} height={WORLD_H}>
       {edges.map((e, i) => {
-        const draw = { initial: { pathLength: 0, opacity: 0 }, animate: { pathLength: 1, opacity: 1 }, transition: still ? { duration: 0 } : { delay: wait + i * 0.012, duration: span } };
+        const transition = still ? { duration: 0 } : { delay: wait + i * 0.012, duration: span };
+        if (e.dashed) {
+          // Animating pathLength would overwrite strokeDasharray, so these fade in instead.
+          return (
+            <motion.path key={e.key} d={e.d} fill="none" stroke={e.color} strokeWidth={2} strokeLinecap="round" strokeDasharray="6 8" initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} transition={transition} />
+          );
+        }
+        const age = e.age ?? 0;
+        const line = LINE_BY_AGE[age];
+        const fade = still ? { duration: 0 } : age === 0 ? transition : { duration: 0.3 };
+        const draw = (width: number) => ({
+          initial: { pathLength: 0, opacity: 0 },
+          animate: { pathLength: 1, opacity: line?.opacity ?? 0, strokeWidth: width },
+          transition: fade,
+        });
+        const badgeOpacity = BADGE_OPACITY[age] ?? (age < BADGE_HISTORY ? OLD_BADGE_OPACITY : 0);
         return (
           <g key={e.key}>
-            <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={9} strokeLinecap="round" strokeOpacity={0.18} {...draw} />
-            <motion.path d={e.d} fill="none" stroke={e.color} strokeWidth={3} strokeLinecap="round" strokeOpacity={0.9} {...draw} />
+            <motion.path d={e.d} fill="none" stroke={e.color} strokeLinecap="round" strokeOpacity={0.18} {...draw(line?.halo ?? 0)} />
+            <motion.path d={e.d} fill="none" stroke={e.color} strokeLinecap="round" strokeOpacity={0.9} {...draw(line?.width ?? 0)} />
             {e.arrows.map((a, k) => (
               <motion.path
                 key={k}
@@ -51,10 +105,18 @@ const Edges = memo(function Edges({ edges, fast }: { edges: EdgePath[]; fast: bo
                 fill={e.color}
                 transform={`translate(${a.x},${a.y}) rotate(${a.angle})`}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={still ? { duration: 0 } : { delay: arrow + i * 0.012 }}
+                animate={{ opacity: line ? line.opacity : 0 }}
+                transition={still ? { duration: 0 } : age === 0 ? { delay: arrow + i * 0.012 } : { duration: 0.3 }}
               />
             ))}
+            {e.badge && (
+              <motion.g initial={{ opacity: 0 }} animate={{ opacity: badgeOpacity }} transition={still ? { duration: 0 } : age === 0 ? { delay: arrow + i * 0.012 } : { duration: 0.3 }}>
+                <circle cx={e.badge.x} cy={e.badge.y} r={15} fill={ROUTE_COLOR} stroke="#0a0f0d" strokeWidth={3} />
+                <text x={e.badge.x} y={e.badge.y} textAnchor="middle" dominantBaseline="central" fontSize={17} fontWeight={700} fill="#0a0f0d">
+                  {e.badge.n}
+                </text>
+              </motion.g>
+            )}
           </g>
         );
       })}
@@ -69,6 +131,7 @@ interface Props {
   lens: Lens;
   phase: Phase;
   selected: string | null;
+  route?: Route | null;
   flow: { in: boolean; out: boolean };
   onFlow: (update: (f: { in: boolean; out: boolean }) => { in: boolean; out: boolean }) => void;
   /** Where the deck sat in the lobby, when the Table opens from a pick. */
@@ -87,7 +150,7 @@ interface Props {
 
 const NO_FIT: Fit = { scale: 1, x: 0, y: 0 };
 
-export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leaving, enter, onDeal, onBackground, inset, fast }: Props) {
+export function Table({ deck, lens, phase, selected, route, flow, onFlow, launch, leaving, enter, onDeal, onBackground, inset, fast }: Props) {
   const t = useT();
   const { hovered } = useInteraction();
   const wrap = useRef<HTMLDivElement>(null);
@@ -163,7 +226,18 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
           ]),
         );
 
-  const poses = leaving ? offstage(placed, -1) : placed;
+  const routed = route && phase === "dealt" && !focus && !leaving ? route : null;
+  const routeIds = useMemo(() => {
+    if (!routed) return null;
+    const steps = routed.flow.steps.map((s) => s.card);
+    return { visited: new Set(steps.slice(0, routed.stepIndex + 1)), current: steps[routed.stepIndex] };
+  }, [routed]);
+
+  const poses = leaving
+    ? offstage(placed, -1)
+    : routeIds
+      ? new Map([...placed].map(([id, p]) => [id, { ...p, dim: !routeIds.visited.has(id) }]))
+      : placed;
 
   // Keyboard model: one tab stop on the board, arrow keys move to the nearest card in that direction.
   const interactive = useMemo(
@@ -202,9 +276,24 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
     [interactive, reveal],
   );
 
+  const routeEdges = useMemo<EdgePath[]>(() => {
+    if (!routed) return [];
+    const centers = (id: string) => cardBox(base.get(id)!);
+    const { steps, later } = routed.flow;
+    const numbered = steps.slice(1, routed.stepIndex + 1).map((s, i) => {
+      const { d, at } = curve(centers(steps[i].card), centers(s.card));
+      return { key: `route:${i}`, d, color: ROUTE_COLOR, arrows: [at(0.75)], badge: { ...at(0.5), n: i + 2 }, age: routed.stepIndex - 1 - i };
+    });
+    const caller = steps[routed.stepIndex];
+    const dashed = deck.cards.find((c) => c.id === caller.card)?.layer === "playbook"
+      ? later.map((l) => ({ key: `later:${caller.card}>${l.card}`, d: curve(centers(caller.card), centers(l.card)).d, color: ROUTE_COLOR, arrows: [], dashed: true }))
+      : [];
+    return [...numbered, ...dashed];
+  }, [routed, base, deck.cards]);
+
   const edges = useMemo(() => {
     if (!focus || !selected) return [];
-    const from = cardCenter(focus.poses.get(selected)!);
+    const from = cardBox(focus.poses.get(selected)!);
     const byOther = new Map<string, { in?: Edge; out?: Edge }>();
     for (const e of edgesShown) {
       const other = e.from === selected ? e.to : e.from;
@@ -213,20 +302,10 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
       byOther.set(other, pair);
     }
     return [...byOther].map(([other, { in: inEdge, out: outEdge }]) => {
-      const to = cardCenter(focus.poses.get(other)!);
-      const mx = (from.x + to.x) / 2 - (to.y - from.y) * 0.12;
-      const my = (from.y + to.y) / 2 + (to.x - from.x) * 0.12;
-      // Point and heading (selected -> other) at parameter t of the quadratic curve.
-      const at = (t: number, toward: boolean) => {
-        const u = 1 - t;
-        const dx = 2 * u * (mx - from.x) + 2 * t * (to.x - mx);
-        const dy = 2 * u * (my - from.y) + 2 * t * (to.y - my);
-        const angle = (Math.atan2(dy, dx) * 180) / Math.PI + (toward ? 180 : 0);
-        return { x: u * u * from.x + 2 * u * t * mx + t * t * to.x, y: u * u * from.y + 2 * u * t * my + t * t * to.y, angle };
-      };
+      const { d, at } = curve(from, cardBox(focus.poses.get(other)!));
       const arrows = inEdge && outEdge ? [at(0.42, true), at(0.58, false)] : inEdge ? [at(0.5, true)] : [];
       const edge = (inEdge ?? outEdge)!;
-      return { key: `${edge.from}>${edge.to}`, d: `M${from.x},${from.y} Q${mx},${my} ${to.x},${to.y}`, color: EDGE_INFO[edge.type].color, arrows };
+      return { key: `${edge.from}>${edge.to}`, d, color: EDGE_INFO[edge.type].color, arrows };
     });
   }, [focus, selected, edgesShown]);
 
@@ -278,7 +357,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
             </div>
           ))}
 
-        <Edges edges={leaving ? [] : edges} fast={fast && phase === "dealt"} />
+        <Edges edges={leaving ? [] : routed ? routeEdges : edges} fast={fast && phase === "dealt"} />
 
         {deck.cards.map((card, i) => (
           <CardView
@@ -290,7 +369,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
             delay={leaving ? 0 : phase === "dealt" && !selected ? i * 0.008 : phase === "dealt" ? 0.02 + (focus?.related.has(card.id) ? i * 0.004 : 0) : 0}
             fast={fast && phase === "dealt"}
             focused={card.id === selected}
-            glow={hovered === card.id}
+            glow={hovered === card.id || routeIds?.current === card.id}
             tabbable={card.id === tabId}
             onNavigate={navigate}
             onFocusCard={setTabbable}
@@ -324,7 +403,7 @@ export function Table({ deck, lens, phase, selected, flow, onFlow, launch, leavi
           </button>
           <span className="zoom-sep" aria-hidden="true" />
           {(["in", "out"] as const).map((k) => (
-            <button key={k} className={`flow${flow[k] ? " on" : ""}`} aria-pressed={flow[k]} onClick={() => onFlow((f) => ({ ...f, [k]: !f[k] }))}>
+            <button key={k} className={`flow${flow[k] ? " on" : ""}`} aria-label={k === "in" ? t.table.inflowLabel : t.table.outflowLabel} aria-pressed={flow[k]} onClick={() => onFlow((f) => ({ ...f, [k]: !f[k] }))}>
               {k === "in" ? t.table.inflow : t.table.outflow}
             </button>
           ))}

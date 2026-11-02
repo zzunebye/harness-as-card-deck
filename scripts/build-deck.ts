@@ -5,7 +5,7 @@ import { parse as parseYaml } from "yaml";
 import { createResolver } from "../src/lib/refs.ts";
 import { extractRefs } from "../src/lib/markdown.ts";
 import { assertEdgeTypes, edgeFromAdd, makeEdge } from "../src/lib/edges.ts";
-import { LAYER_ORDER, type Bodies, type Card, type Deck, type Edge, type Layer, type Stage, type Translations } from "../src/types.ts";
+import { LAYER_ORDER, type Bodies, type Card, type Deck, type Edge, type Flow, type Layer, type Stage, type Translations } from "../src/types.ts";
 import { triage } from "./translations.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -162,6 +162,25 @@ const SOURCES: Source[] = [
       return { cards, version: JSON.parse(read("plugin.json")).version };
     },
   },
+  {
+    id: "mattpocock",
+    label: "mattpocock skills",
+    repo: "mattpocock/skills",
+    subdir: "",
+    license: "MIT",
+    collect(read) {
+      // plugin.json lists the promoted skills. misc/ and in-progress/ stay out.
+      const plugin = JSON.parse(read("plugin.json"));
+      const cards = (plugin.skills as string[]).map((s): RawCard => {
+        const path = `${s.replace(/^\.\//, "")}/SKILL.md`;
+        const { data, body } = splitFrontmatter(read(path));
+        const name = path.split("/").at(-2)!;
+        const layer: Layer = name === "ask-matt" ? "router" : "skill";
+        return { id: `${layer}:${name}`, layer, name, title: heading(body) ?? name, description: String(data.description ?? "").trim(), path, body };
+      });
+      return { cards, version: plugin.version };
+    },
+  },
 ];
 
 function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Record<string, Bodies> } {
@@ -220,6 +239,15 @@ function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Recor
     }
   }
 
+  const flowFile = join(ROOT, "data/flows", `${src.id}.json`);
+  const flows: Flow[] | undefined = existsSync(flowFile) ? JSON.parse(readFileSync(flowFile, "utf8")) : undefined;
+  for (const f of flows ?? []) {
+    if (!f.steps.length) throw new Error(`${src.id} flow ${f.id}: no steps`);
+    for (const id of [...f.steps.map((s) => s.card), ...f.later.map((l) => l.card)]) {
+      if (!byId.has(id)) throw new Error(`${src.id} flow ${f.id}: unknown card ${id}`);
+    }
+  }
+
   const english: Bodies = Object.fromEntries(cards.map((c) => [c.id, c.body]));
   const translated: Record<string, Bodies> = {};
   const transDir = join(ROOT, "data/translations");
@@ -238,6 +266,7 @@ function buildDeck(src: Source): { deck: Deck; bodies: Bodies; translated: Recor
     about: readFileSync(join(ROOT, "data/about", `${src.id}.md`), "utf8").trim(),
     cards: cards.map(({ body: _, ...card }): Card => card),
     edges: [...edges.values()],
+    ...(flows && { flows }),
   };
   return { deck, bodies: english, translated };
 }

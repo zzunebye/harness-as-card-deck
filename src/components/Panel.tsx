@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { LANGUAGES, LAYER_INFO, LAYER_ORDER, type Card, type Deck } from "../types.ts";
 import { createResolver } from "../lib/refs.ts";
 import { extractHeadings, remarkDropComments, remarkRefs } from "../lib/markdown.ts";
+import { resolveSourceLink, sourceUrl } from "../lib/sourceLinks.ts";
 import { useBodies } from "../lib/bodies.ts";
 import { useInteraction } from "../context.ts";
 import type { Phase } from "./Table.tsx";
@@ -78,7 +79,7 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
   );
 }
 
-export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck; phase: Phase; card: Card | null; lang: string; onLang(lang: string): void; onClose(): void }) {
+export function Panel({ deck, phase, card, step, lang, onLang, onClose }: { deck: Deck; phase: Phase; card: Card | null; step?: { n: number; total: number; reason: string; quote?: string } | null; lang: string; onLang(lang: string): void; onClose(): void }) {
   const t = useT();
   const about = useAbout(deck, useLocale());
   // Bodies can exist in languages the interface lacks, which the toggle cannot select.
@@ -113,12 +114,12 @@ export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck
           return lang || text.includes("\n") ? <CodeBlock code={text.replace(/\n$/, "")} lang={lang ?? "text"} /> : <code>{children}</code>;
         },
         a: ({ href, children }: ComponentProps<"a">) => (
-          <a href={href} target="_blank" rel="noreferrer">
+          <a href={resolveSourceLink(href, deck.meta, card?.path)} target="_blank" rel="noreferrer">
             {children}
           </a>
         ),
     } as unknown as Components;
-  }, [headings]);
+  }, [headings, deck.meta, card?.path]);
 
   const remarkPlugins = useMemo(() => (card ? [remarkGfm, remarkDropComments, remarkRefs(resolver, card.id)] : [remarkGfm, remarkDropComments]), [resolver, card]);
 
@@ -177,7 +178,7 @@ export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck
             ✕
           </button>
         </div>
-        <a className="src" target="_blank" rel="noreferrer" href={`https://github.com/${deck.meta.repo}/blob/${deck.meta.sha}/${[deck.meta.subdir, card.path].filter(Boolean).join("/")}`}>
+        <a className="src" target="_blank" rel="noreferrer" href={sourceUrl(deck.meta, card.path)}>
           {card.path}
         </a>
         <p className="stat">
@@ -193,6 +194,13 @@ export function Panel({ deck, phase, card, lang, onLang, onClose }: { deck: Deck
           </div>
         )}
       </div>
+      {step && (
+        <section className="flow-step" aria-label={t.flow.heading}>
+          <b className="flow-step-n">{t.flow.step(step.n, step.total)}</b>
+          <p>{step.reason}</p>
+          {step.quote && <blockquote lang="en">{step.quote}</blockquote>}
+        </section>
+      )}
       {bodies && (lang === "en" || translations) ? (
         <>
           {toc.length >= 3 && <Toc key={`${card.id}:${lang}`} headings={toc} scroller={scroller} onClose={onClose} />}

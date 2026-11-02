@@ -4,10 +4,11 @@ import repo from "./data/repo.json";
 import { EDGE_INFO, edgeDefinition, type Deck, type EdgeType } from "./types.ts";
 import { lensesFor, type Launch, type Lens } from "./lib/layout.ts";
 import { Analytics, type BeforeSend } from "@vercel/analytics/react";
-import { analyticsPage, parseUrlState, serializeUrlState, trailFor } from "./lib/urlState.ts";
+import { analyticsPage, parseUrlState, serializeUrlState, trailFor, type FlowState } from "./lib/urlState.ts";
 import { loadBodies } from "./lib/bodies.ts";
 import { InteractionContext } from "./context.ts";
 import { Table, type Phase } from "./components/Table.tsx";
+import { FlowBar } from "./components/FlowBar.tsx";
 import { Panel } from "./components/Panel.tsx";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
 import { Lobby } from "./components/Lobby.tsx";
@@ -50,8 +51,6 @@ function saveLang(lang: Locale) {
 
 const OVERLAY_MAX = 1100;
 const PHONE_MAX = 640;
-// How long a phone waits after a card pick before the panel slides over the board: the fast spring and edge draw below have mostly landed by then.
-const PANEL_DELAY_MS = 450;
 const SLIDE_MS = 450;
 
 function useViewportWidth() {
@@ -65,7 +64,7 @@ function useViewportWidth() {
 }
 
 // A link that names a lens or card skips the shuffle intro.
-const skipsIntro = (search: string, state: ReturnType<typeof parseUrlState>) => state !== null && (state.card !== null || new URLSearchParams(search).has("lens"));
+const skipsIntro = (search: string, state: ReturnType<typeof parseUrlState>) => state !== null && (state.card !== null || state.flow !== null || new URLSearchParams(search).has("lens"));
 
 const initial = parseUrlState(location.search, decks);
 const initialDeck = decks.find((d) => d.meta.id === initial?.source);
@@ -106,6 +105,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   // null is the lobby, where every deck sits as its own stack until one is picked.
   const [source, setSource] = useState<string | null>(initial?.source ?? null);
   const [trail, setTrail] = useState<string[]>(initialTrail);
+  const [replay, setReplay] = useState<FlowState | null>(initial?.flow ?? null);
   const [hovered, setHovered] = useState<string | null>(null);
   // Where the picked deck sat in the lobby. Only the Table that mounts for that pick starts from it.
   const [launch, setLaunch] = useState<Launch | null>(null);
@@ -125,33 +125,43 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const overlay = vw <= OVERLAY_MAX;
 
   const deck = decks.find((d) => d.meta.id === source) ?? null;
+  const route = useMemo(() => {
+    const f = deck?.flows?.find((f) => f.id === replay?.id);
+    return f && replay ? { flow: f, stepIndex: replay.stepIndex } : null;
+  }, [deck, replay]);
   const cards = useMemo(() => new Map((deck?.cards ?? []).map((c) => [c.id, c])), [deck]);
   // A deck without translations in the interface language shows English bodies.
   const lang = !original && deck?.meta.langs.includes(locale) ? locale : "en";
   const pickLocale = useCallback((l: Locale) => (setOriginal(false), onChoice(l)), [onChoice]);
   const chooseLang = useCallback((l: string) => (l === "en" ? setOriginal(true) : pickLocale(matchLocale(l) ?? "en")), [pickLocale]);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(!(initial?.flow && window.innerWidth <= OVERLAY_MAX));
   const selected = trail.at(-1) ?? null;
+  const stepCard = route ? route.flow.steps[route.stepIndex].card : null;
+  const shown = selected ?? stepCard;
   // Keep the board visible beside the drawer, except on phones where the drawer covers it.
-  const inset = overlay && selected && panelOpen && vw > PHONE_MAX ? Math.min(panelW, vw * 0.55) : 0;
+  const inset = overlay && shown && panelOpen && vw > PHONE_MAX ? Math.min(panelW, vw * 0.55) : 0;
 
   const showing = useRef(false);
-  showing.current = !!selected && panelOpen;
+  showing.current = !!shown && panelOpen;
   const panelTimer = useRef<number>(0);
 
   const select = useCallback((id: string) => {
     setHovered(null);
     clearTimeout(panelTimer.current);
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // On phones the panel covers the board, so a first pick lets the cards and edges start moving before it slides over them.
-    if (window.innerWidth <= PHONE_MAX && !showing.current && !calm) {
-      setPanelOpen(false);
-      panelTimer.current = window.setTimeout(() => setPanelOpen(true), PANEL_DELAY_MS);
-    } else {
-      setPanelOpen(true);
-    }
+    // On phones the panel covers the board, so a pick from the board only selects and animates. The reader opens from the "read" button; a pick made inside an open reader keeps it open.
+    setPanelOpen(window.innerWidth > PHONE_MAX || showing.current);
     setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
   }, []);
+  // Overlay widths push one history entry per trail step (marked `pushed`, with the trail it grew from in `from`), so Back peels the same step. An entry written by replaceState, such as a card picked at desktop width before the window narrowed, or one pushed by a breadcrumb jump, is not preceded by this trail minus its last card: drop the step by hand rather than leave the site.
+  const replaceNext = useRef(false);
+  const back = useCallback(() => {
+    if (history.state?.pushed && history.state.trail?.length === trail.length && history.state.from === trail.slice(0, -1).join("|")) history.back();
+    else {
+      // The shortened trail rewrites the entry we are on; pushing would make the next Back restore the longer trail.
+      replaceNext.current = true;
+      setTrail((t) => t.slice(0, -1));
+    }
+  }, [trail]);
   const clear = useCallback(() => {
     clearTimeout(panelTimer.current);
     setTrail([]);
@@ -159,9 +169,15 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   // In drawer mode the first dismiss only hides the panel so the selected card's relations stay on the board.
   const dismiss = useCallback(() => {
     clearTimeout(panelTimer.current);
-    if (overlay && selected && panelOpen) setPanelOpen(false);
-    else clear();
-  }, [overlay, selected, panelOpen, clear]);
+    if (popover) setPopover(null);
+    else if (trail.length > 0) {
+      if (overlay && panelOpen) setPanelOpen(false);
+      else clear();
+    } else if (replay) {
+      if (overlay && panelOpen) setPanelOpen(false);
+      else setReplay(null);
+    }
+  }, [popover, trail, overlay, panelOpen, replay, clear]);
 
   // Fetch the deck's card text while the stack and shuffle play, so it is there by the time a card can be opened.
   useEffect(() => {
@@ -179,6 +195,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     clearTimeout(swapTimer.current);
     setHovered(null);
     setTrail([]);
+    setReplay(null);
     setPhase("stack");
     setLaunch(from);
     setLeaving(false);
@@ -227,27 +244,32 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     const full = location.href;
     const base = serializeUrlState({ ...initial, card: null, lang: choice }, { source: null, lens: null });
     history.replaceState({ trail: [] }, "", location.pathname + withCampaign(base));
-    history.pushState({ trail: initialTrail }, "", full);
+    history.pushState({ trail: initialTrail, pushed: true, from: "" }, "", full);
   }, []);
 
   // Once dealt, the lens is always written, because a bare URL would reload into the stack intro.
   useEffect(() => {
-    const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected, lang: choice }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
+    const search = deck ? serializeUrlState({ source: deck.meta.id, lens, card: selected, lang: choice, flow: replay }, { source: null, lens: phase === "dealt" ? null : lensesFor(deck)[0].id }) : "";
     const id = deck?.meta.id ?? null;
     const url = location.pathname + withCampaign(search);
     const key = trail.join("|");
     const trailChanged = key !== trailKey.current;
+    const from = trailKey.current;
     trailKey.current = key;
+    const replaceOnly = replaceNext.current;
+    replaceNext.current = false;
     // Overlay widths push per trail step so Back peels cards off the panel. The trail is cleared before a deck swap, so a leaving deck must not push.
     if (id !== urlSource.current) {
       urlSource.current = id;
       history.pushState({ trail }, "", url);
-    } else if (trailChanged && overlay && !leaving) {
-      history.pushState({ trail }, "", url);
+    } else if (trailChanged && overlay && !leaving && !replaceOnly) {
+      history.pushState({ trail, pushed: true, from }, "", url);
     } else {
-      history.replaceState({ trail }, "", url);
+      // Rewriting the entry we are on keeps its mark unless the trail itself changed under it.
+      const keep = !trailChanged && !!history.state?.pushed;
+      history.replaceState({ trail, pushed: keep, from: keep ? history.state.from : undefined }, "", url);
     }
-  }, [lens, selected, phase, deck, choice, trail, leaving, overlay]);
+  }, [lens, selected, phase, deck, choice, trail, leaving, overlay, replay]);
 
   useEffect(() => {
     const onPop = () => {
@@ -263,7 +285,9 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         setLeaving(false);
         setHovered(null);
         setTrail(nextTrail);
-        setPanelOpen(nextTrail.length > 0);
+        setReplay(state?.flow ?? null);
+        // On phones a step back must not open the reader; it stays as it was.
+        setPanelOpen(nextTrail.length > 0 && (window.innerWidth > PHONE_MAX || showing.current));
         return;
       }
       clearTimeout(dealTimer.current);
@@ -276,6 +300,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
       setSource(state?.source ?? null);
       setLens(state?.lens ?? lensesFor(decks[0])[0].id);
       setTrail(nextTrail);
+      setReplay(state?.flow ?? null);
       if (nextTrail.length > 0) setPanelOpen(true);
       setPhase(skipsIntro(location.search, state) ? "dealt" : "stack");
     };
@@ -286,12 +311,12 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.target instanceof HTMLInputElement) return;
-      if (popover) setPopover(null);
-      else dismiss();
+      dismiss();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dismiss, popover]);
+  }, [dismiss]);
+
 
   useEffect(() => {
     if (popover !== "menu") return;
@@ -317,13 +342,23 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
     window.addEventListener("pointerup", up);
   }, []);
 
+  const startReplay = useCallback(
+    (id: string) => {
+      clear();
+      setReplay({ id, stepIndex: 0 });
+      if (deck && lensesFor(deck).some((l) => l.id === "tree")) setLens("tree");
+      if (overlay) setPanelOpen(false);
+    },
+    [deck, overlay, clear],
+  );
+
   const legendTypes = useMemo(() => {
     const used = new Set(deck?.edges.map((e) => e.type));
     return (Object.keys(EDGE_INFO) as EdgeType[]).filter((t) => used.has(t));
   }, [deck]);
   const ctx = useMemo(() => ({ hovered, setHovered, select }), [hovered, select]);
   const tabs = deck !== null && phase === "dealt";
-  const reading = !!selected && panelOpen;
+  const reading = !!shown && panelOpen;
   const page = analyticsPage({ source, card: selected });
 
   return (
@@ -384,8 +419,14 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
         ) : (
         <main className={`stage${overlay ? " overlay" : ""}${reading ? " open" : ""}`} style={{ "--panel-w": `${panelW}px` } as React.CSSProperties}>
           <section className="left">
-            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
-            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={dismiss} inset={inset} fast={vw <= PHONE_MAX} />
+            <Breadcrumbs trail={trail} cards={cards} onJump={(i) => setTrail((t) => t.slice(0, i + 1))} onClear={clear} onBack={back} onOpen={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+            <Table key={source} deck={deck} launch={launch} leaving={leaving} enter={enter} lens={lens} phase={phase} selected={selected} route={route} flow={flow} onFlow={setFlow} onDeal={deal} onBackground={() => trail.length > 0 && dismiss()} inset={inset} fast={vw <= PHONE_MAX} />
+            {phase === "dealt" && !leaving && deck.flows && (
+              <FlowBar deck={deck} replay={replay} onStart={startReplay} onStep={(stepIndex) => {
+                clear();
+                setReplay((r) => r && { ...r, stepIndex });
+              }} onClose={() => setReplay(null)} onDetails={overlay && !panelOpen ? () => setPanelOpen(true) : undefined} />
+            )}
             {legendTypes.length > 0 && (
               <div className={`legend-box${popover === "legend" ? " open" : ""}`}>
                 <button className="icon-btn legend-btn" aria-label={t.topbar.legend} aria-expanded={popover === "legend"} aria-controls="edge-legend" onClick={() => toggle("legend")}>ⓘ</button>
@@ -401,7 +442,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
             )}
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label={t.topbar.resizePanel} onPointerDown={startResize} />
-          <Panel deck={deck} phase={phase} card={selected ? cards.get(selected)! : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
+          <Panel deck={deck} phase={phase} card={shown ? cards.get(shown)! : null} step={route && shown === stepCard ? { n: route.stepIndex + 1, total: route.flow.steps.length, reason: route.flow.steps[route.stepIndex].reason, quote: route.flow.steps[route.stepIndex].quote } : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
         </main>
         )}
       </div>
