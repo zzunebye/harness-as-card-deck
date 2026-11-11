@@ -168,6 +168,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 .reading { position: relative; }
 .reading-btn { border: 0; background: #20242a; border-radius: 6px; height: 28px; padding: 0 9px; font: 600 12.5px var(--display); color: var(--muted); }
 .reading-btn[aria-expanded="true"], .reading-btn:hover { color: var(--panel-ink); background: #2a3140; }
+.topbar .reading-btn { height: 36px; padding: 0 14px; border: 1px solid #2a3a33; border-radius: 10px; background: #121a16; color: var(--gold); font-size: 13px; }
+.topbar .reading-btn:hover, .topbar .reading-btn[aria-expanded="true"] { background: #1a2620; color: var(--gold); }
 .reading-row { display: grid; gap: 4px; }
 .reading-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .reading-pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 10; display: grid; gap: 10px; padding: 12px; background: #14171b; border: 1px solid #2a2e34; border-radius: 10px; box-shadow: 0 12px 24px rgba(0,0,0,0.5); }

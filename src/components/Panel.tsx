@@ -8,8 +8,7 @@ import { resolveSourceLink, sourceUrl } from "../lib/sourceLinks.ts";
 import { useBodies } from "../lib/bodies.ts";
 import { useInteraction } from "../context.ts";
 import type { Phase } from "./Table.tsx";
-import { ReadingControls } from "./ReadingControls.tsx";
-import { loadPrefs, prefsStyle, savePrefs, type ReadingPrefs } from "../lib/readingPrefs.ts";
+import { prefsStyle, type ReadingPrefs } from "../lib/readingPrefs.ts";
 import { Toc, tocHeadings } from "./Toc.tsx";
 import { headingComponents } from "../lib/headingComponents.ts";
 import { useLocale, useT } from "../i18n/index.ts";
@@ -79,7 +78,7 @@ function Chip(props: ComponentProps<"span"> & { "data-target"?: string }) {
   );
 }
 
-export function Panel({ deck, phase, card, step, lang, onLang, onClose }: { deck: Deck; phase: Phase; card: Card | null; step?: { n: number; total: number; reason: string; quote?: string } | null; lang: string; onLang(lang: string): void; onClose(): void }) {
+export function Panel({ deck, phase, card, step, lang, prefs, onLang, onClose }: { deck: Deck; phase: Phase; card: Card | null; step?: { n: number; total: number; reason: string; quote?: string } | null; lang: string; prefs: ReadingPrefs; onLang(lang: string): void; onClose(): void }) {
   const t = useT();
   const about = useAbout(deck, useLocale());
   // Bodies can exist in languages the interface lacks, which the toggle cannot select.
@@ -93,11 +92,6 @@ export function Panel({ deck, phase, card, step, lang, onLang, onClose }: { deck
   const headings = useMemo(() => (body ? extractHeadings(body) : []), [body]);
   const toc = useMemo(() => tocHeadings(headings), [headings]);
 
-  const [prefs, setPrefs] = useState(loadPrefs);
-  const changePrefs = (next: ReadingPrefs) => {
-    setPrefs(next);
-    savePrefs(next);
-  };
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
@@ -173,7 +167,6 @@ export function Panel({ deck, phase, card, step, lang, onLang, onClose }: { deck
         </span>
         <h2>{card.name}</h2>
         <div className="head-actions">
-          <ReadingControls prefs={prefs} onChange={changePrefs} />
           <button className="close" onClick={onClose} aria-label={t.panel.close}>
             ✕
           </button>
