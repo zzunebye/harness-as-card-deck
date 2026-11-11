@@ -13,6 +13,8 @@ import { Panel } from "./components/Panel.tsx";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
 import { Lobby } from "./components/Lobby.tsx";
 import { Search } from "./components/Search.tsx";
+import { ReadingControls } from "./components/ReadingControls.tsx";
+import { loadPrefs, savePrefs, type ReadingPrefs } from "./lib/readingPrefs.ts";
 import { I18nProvider, useT } from "./i18n/index.ts";
 import { chosenLocale, LOCALES, matchLocale, systemLocale, type Locale } from "./i18n/locale.ts";
 
@@ -135,6 +137,11 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
   const pickLocale = useCallback((l: Locale) => (setOriginal(false), onChoice(l)), [onChoice]);
   const chooseLang = useCallback((l: string) => (l === "en" ? setOriginal(true) : pickLocale(matchLocale(l) ?? "en")), [pickLocale]);
   const [panelOpen, setPanelOpen] = useState(!(initial?.flow && window.innerWidth <= OVERLAY_MAX));
+  const [prefs, setPrefs] = useState(loadPrefs);
+  const changePrefs = (next: ReadingPrefs) => {
+    setPrefs(next);
+    savePrefs(next);
+  };
   const selected = trail.at(-1) ?? null;
   const stepCard = route ? route.flow.steps[route.stepIndex].card : null;
   const shown = selected ?? stepCard;
@@ -399,6 +406,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
           <div className={`topbar-menu${popover === "menu" ? " open" : ""}`} ref={menuRef}>
             <button className="icon-btn menu-btn" aria-label={t.topbar.menu} aria-expanded={popover === "menu"} aria-controls="topbar-menu-items" onClick={() => toggle("menu")}>⋯</button>
             <div className="menu-items" id="topbar-menu-items">
+          {deck && <ReadingControls prefs={prefs} onChange={changePrefs} />}
           <select className="source-select locale-select" aria-label={t.topbar.language} value={locale} onChange={(e) => (pickLocale(e.target.value as Locale), setPopover(null))}>
             {(Object.keys(LOCALES) as Locale[]).map((l) => (
               <option key={l} value={l}>{LOCALES[l]}</option>
@@ -442,7 +450,7 @@ function Shell({ locale, choice, onChoice }: { locale: Locale; choice: Locale | 
             )}
           </section>
           <div className="resizer" role="separator" aria-orientation="vertical" aria-label={t.topbar.resizePanel} onPointerDown={startResize} />
-          <Panel deck={deck} phase={phase} card={shown ? cards.get(shown)! : null} step={route && shown === stepCard ? { n: route.stepIndex + 1, total: route.flow.steps.length, reason: route.flow.steps[route.stepIndex].reason, quote: route.flow.steps[route.stepIndex].quote } : null} lang={lang} onLang={chooseLang} onClose={dismiss} />
+          <Panel deck={deck} phase={phase} card={shown ? cards.get(shown)! : null} step={route && shown === stepCard ? { n: route.stepIndex + 1, total: route.flow.steps.length, reason: route.flow.steps[route.stepIndex].reason, quote: route.flow.steps[route.stepIndex].quote } : null} lang={lang} prefs={prefs} onLang={chooseLang} onClose={dismiss} />
         </main>
         )}
       </div>
